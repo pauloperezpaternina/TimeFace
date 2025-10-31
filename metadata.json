@@ -1,0 +1,7 @@
+{
+  "name": "Logiservices ZF S.A.S Attendance Tracker",
+  "description": "A web application to record employee check-ins and check-outs using facial recognition powered by the Gemini API. It includes modules for managing collaborators, users, roles, and generating attendance reports.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
