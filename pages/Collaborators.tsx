@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { dbService } from '../services/dbService';
 import { Collaborator } from '../types';
 import Modal from '../components/Modal';
 import CameraCapture from '../components/CameraCapture';
+import Spinner from '../components/Spinner';
 
 const CollaboratorForm: React.FC<{
   collaboratorToEdit: Collaborator | null;
@@ -14,6 +14,7 @@ const CollaboratorForm: React.FC<{
   const [position, setPosition] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (collaboratorToEdit) {
@@ -42,28 +43,27 @@ const CollaboratorForm: React.FC<{
     setShowCamera(false);
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !position || !photo) {
       alert('Todos los campos son obligatorios, incluida la foto.');
       return;
     }
-    const collaborators = dbService.getCollaborators();
-    if (collaboratorToEdit) {
-      const updatedCollaborators = collaborators.map(c =>
-        c.id === collaboratorToEdit.id ? { ...c, name, position, photo } : c
-      );
-      dbService.saveCollaborators(updatedCollaborators);
-    } else {
-      const newCollaborator: Collaborator = {
-        id: `collab-${Date.now()}`,
-        name,
-        position,
-        photo,
-      };
-      dbService.saveCollaborators([...collaborators, newCollaborator]);
+    
+    setIsSaving(true);
+    try {
+      if (collaboratorToEdit) {
+        await dbService.updateCollaborator({ ...collaboratorToEdit, name, position, photo });
+      } else {
+        await dbService.addCollaborator({ name, position, photo });
+      }
+      onSave();
+    } catch (error) {
+      console.error("Failed to save collaborator:", error);
+      alert('Error al guardar el colaborador.');
+    } finally {
+      setIsSaving(false);
     }
-    onSave();
   };
 
   if (showCamera) {
@@ -100,8 +100,11 @@ const CollaboratorForm: React.FC<{
           </div>
       </div>
       <div className="flex justify-end space-x-2">
-        <button type="button" onClick={onCancel} className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-600 hover:bg-gray-50 dark:hover:bg-gray-500">Cancelar</button>
-        <button type="submit" className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">Guardar</button>
+        <button type="button" onClick={onCancel} disabled={isSaving} className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-600 hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50">Cancelar</button>
+        <button type="submit" disabled={isSaving} className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 flex items-center disabled:opacity-50">
+          {isSaving && <Spinner size="4" />}
+          {isSaving ? 'Guardando...' : 'Guardar'}
+        </button>
       </div>
     </form>
   );
@@ -109,12 +112,25 @@ const CollaboratorForm: React.FC<{
 
 const Collaborators: React.FC = () => {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [collaboratorToEdit, setCollaboratorToEdit] = useState<Collaborator | null>(null);
   const [collaboratorToDelete, setCollaboratorToDelete] = useState<Collaborator | null>(null);
 
-  const loadCollaborators = useCallback(() => {
-    setCollaborators(dbService.getCollaborators());
+  const loadCollaborators = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await dbService.getCollaborators();
+      setCollaborators(data);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Ocurrió un error desconocido.";
+      console.error("Failed to load collaborators:", err);
+      setError(`No se pudieron cargar los colaboradores. ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -132,11 +148,15 @@ const Collaborators: React.FC = () => {
     setShowForm(true);
   };
   
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (collaboratorToDelete) {
-      const updatedCollaborators = collaborators.filter(c => c.id !== collaboratorToDelete.id);
-      dbService.saveCollaborators(updatedCollaborators);
-      loadCollaborators();
+      try {
+        await dbService.deleteCollaborator(collaboratorToDelete.id);
+        loadCollaborators();
+      } catch (error) {
+        console.error("Failed to delete collaborator:", error);
+        alert("Error al eliminar el colaborador.");
+      }
     }
   };
 
@@ -153,29 +173,42 @@ const Collaborators: React.FC = () => {
       
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Foto</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nombre</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cargo</th>
-                  <th scope="col" className="relative px-6 py-3"><span className="sr-only">Acciones</span></th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {collaborators.map(collaborator => (
-                  <tr key={collaborator.id}>
-                    <td className="px-6 py-4 whitespace-nowrap"><img className="h-12 w-12 rounded-full object-cover" src={collaborator.photo} alt={collaborator.name} /></td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{collaborator.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{collaborator.position}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button onClick={() => handleEdit(collaborator)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Editar</button>
-                      <button onClick={() => setCollaboratorToDelete(collaborator)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Eliminar</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {isLoading ? (
+                <div className="flex justify-center items-center p-8">
+                    <Spinner size="10" />
+                </div>
+            ) : error ? (
+                <div className="p-8 text-center">
+                    <p className="text-red-500 font-medium">{error}</p>
+                    <button onClick={loadCollaborators} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        Reintentar
+                    </button>
+                </div>
+            ) : (
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Foto</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nombre</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cargo</th>
+                    <th scope="col" className="relative px-6 py-3"><span className="sr-only">Acciones</span></th>
+                    </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {collaborators.map(collaborator => (
+                    <tr key={collaborator.id}>
+                        <td className="px-6 py-4 whitespace-nowrap"><img className="h-12 w-12 rounded-full object-cover" src={collaborator.photo} alt={collaborator.name} /></td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{collaborator.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{collaborator.position}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <button onClick={() => handleEdit(collaborator)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Editar</button>
+                        <button onClick={() => setCollaboratorToDelete(collaborator)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Eliminar</button>
+                        </td>
+                    </tr>
+                    ))}
+                </tbody>
+                </table>
+            )}
         </div>
       </div>
       <Modal 

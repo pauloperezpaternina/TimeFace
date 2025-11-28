@@ -18,6 +18,11 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, width = 640, h
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
+      
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("El navegador no soporta acceso a la cámara o el contexto no es seguro (HTTPS).");
+      }
+
       const newStream = await navigator.mediaDevices.getUserMedia({ 
         video: { width, height, facingMode: 'user' } 
       });
@@ -28,7 +33,15 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, width = 640, h
       setError(null);
     } catch (err) {
       console.error("Error accessing camera:", err);
-      setError("No se pudo acceder a la cámara. Por favor, verifique los permisos.");
+      let msg = "No se pudo acceder a la cámara.";
+      if (err instanceof DOMException) {
+          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+              msg = "Permiso denegado. Por favor permita el acceso a la cámara en su navegador.";
+          } else if (err.name === 'NotFoundError') {
+              msg = "No se encontró ninguna cámara.";
+          }
+      }
+      setError(msg);
     }
   }, [stream, width, height]);
 
@@ -58,11 +71,17 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, width = 640, h
 
   return (
     <div className="flex flex-col items-center space-y-4">
-      <div className="relative w-full max-w-md bg-gray-900 rounded-lg overflow-hidden shadow-lg">
-        <video ref={videoRef} autoPlay playsInline muted className="w-full h-auto" />
+      <div className="relative w-full max-w-md bg-gray-900 rounded-lg overflow-hidden shadow-lg min-h-[240px] flex items-center justify-center">
+        <video ref={videoRef} autoPlay playsInline muted className={`w-full h-auto ${error ? 'hidden' : 'block'}`} />
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75">
-            <p className="text-white text-center p-4">{error}</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 p-4">
+            <p className="text-white text-center mb-4">{error}</p>
+            <button 
+                onClick={startCamera} 
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+            >
+                Reintentar
+            </button>
           </div>
         )}
       </div>

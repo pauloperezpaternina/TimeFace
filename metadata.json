@@ -1,6 +1,6 @@
 {
-  "name": "Logiservices ZF S.A.S Attendance Tracker",
-  "description": "A web application to record employee check-ins and check-outs using facial recognition powered by the Gemini API. It includes modules for managing collaborators, users, roles, and generating attendance reports.",
+  "name": "TimeFace EasyShift Supabase",
+  "description": "Sistema inteligente de control de asistencia que utiliza reconocimiento facial para garantizar precisión, seguridad y eficiencia. Automatiza el registro de entrada/salida sin contacto, ideal para entornos laborales y educativos.",
   "requestFramePermissions": [
     "camera"
   ]
