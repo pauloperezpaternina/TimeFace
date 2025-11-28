@@ -14,6 +14,18 @@ TimeFace EasyShift es un sistema avanzado de control de asistencia y planificaci
 
 ---
 
+## 🚀 Instalación de Base de Datos
+
+Para configurar las tablas y datos iniciales (como el turno de oficina) en Supabase:
+
+1.  Copia el contenido del archivo `supabase_setup.sql`.
+2.  Ve a tu proyecto en **Supabase** > **SQL Editor**.
+3.  Pega el código y haz clic en **Run**.
+
+Esto creará las tablas necesarias (`shifts`, `visits`, `schedules`, etc.) y el patrón de turno de oficina predeterminado.
+
+---
+
 ## 📚 Guía de Usuario
 
 Esta guía te llevará paso a paso a través de la configuración y el uso de TimeFace EasyShift.

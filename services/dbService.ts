@@ -282,6 +282,52 @@ class DbService {
     }
   }
 
+  async copyScheduleFromPreviousWeek(targetStartDate: string, targetEndDate: string): Promise<void> {
+    const targetStart = new Date(targetStartDate);
+    const prevStart = new Date(targetStart);
+    prevStart.setDate(prevStart.getDate() - 7);
+    const prevEnd = new Date(prevStart);
+    prevEnd.setDate(prevEnd.getDate() + 6);
+    
+    const prevStartStr = prevStart.toISOString().split('T')[0];
+    const prevEndStr = prevEnd.toISOString().split('T')[0];
+    
+    // Get previous week schedules
+    const prevSchedules = await this.getSchedules(prevStartStr, prevEndStr);
+    if(prevSchedules.length === 0) throw new Error("No hay horarios en la semana anterior para copiar.");
+    
+    // Get existing target schedules to avoid duplicates (could also use upsert if constraint exists)
+    const currentSchedules = await this.getSchedules(targetStartDate, targetEndDate);
+    const existingMap = new Set(currentSchedules.map(s => `${s.collaborator_id}-${s.date}`));
+
+    const newSchedules: Omit<Schedule, 'id'>[] = [];
+    
+    prevSchedules.forEach(ps => {
+        const oldDate = new Date(ps.date);
+        const newDate = new Date(oldDate);
+        newDate.setDate(newDate.getDate() + 7);
+        const newDateStr = newDate.toISOString().split('T')[0];
+
+        if (!existingMap.has(`${ps.collaborator_id}-${newDateStr}`)) {
+             newSchedules.push({
+                collaborator_id: ps.collaborator_id,
+                shift_id: ps.shift_id,
+                date: newDateStr,
+                status: 'scheduled'
+             });
+        }
+    });
+
+    if (newSchedules.length > 0) {
+        await supabaseRequest<void>(supabase.from('schedules').insert(newSchedules));
+    }
+  }
+
+  async bulkCreateSchedules(schedules: Omit<Schedule, 'id'>[]): Promise<void> {
+      if (schedules.length === 0) return;
+      await supabaseRequest<void>(supabase.from('schedules').insert(schedules));
+  }
+
   // --- Shift Patterns ---
   getShiftPatterns(): Promise<ShiftPattern[]> { return supabaseRequest<ShiftPattern[]>(supabase.from('shift_patterns').select('*')); }
   addShiftPattern(pattern: Omit<ShiftPattern, 'id'>): Promise<ShiftPattern> { return supabaseRequest<ShiftPattern>(supabase.from('shift_patterns').insert(pattern).select().single()); }

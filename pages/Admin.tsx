@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import ManageUsers from './admin/ManageUsers';
 import ManageRoles from './admin/ManageRoles';
@@ -39,8 +40,11 @@ const Admin: React.FC = () => {
 
   return (
     <div className="container mx-auto">
-       <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Panel de Administración</h1>
-      <div className="flex space-x-2 border-b border-gray-200 dark:border-gray-700 mb-6">
+       <div className="flex justify-between items-center mb-6">
+           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Panel de Administración</h1>
+       </div>
+       
+      <div className="flex space-x-2 border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto pb-2">
         <TabButton tabName="users" label="Gestionar Usuarios" />
         <TabButton tabName="roles" label="Gestionar Roles" />
         <TabButton tabName="shifts" label="Gestionar Turnos" />
