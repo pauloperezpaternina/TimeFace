@@ -10,15 +10,22 @@ interface CameraCaptureProps {
 const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, width = 640, height = 480 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  // Use a ref to track the stream for reliable cleanup in useEffect
+  const streamRef = useRef<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
   const startCamera = useCallback(async () => {
+    // Ensure any existing stream is stopped before starting a new one
+    stopCamera();
+    
     try {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error("El navegador no soporta acceso a la cámara o el contexto no es seguro (HTTPS).");
       }
@@ -26,10 +33,12 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, width = 640, h
       const newStream = await navigator.mediaDevices.getUserMedia({ 
         video: { width, height, facingMode: 'user' } 
       });
+      
+      streamRef.current = newStream;
+      
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
       }
-      setStream(newStream);
       setError(null);
     } catch (err) {
       console.error("Error accessing camera:", err);
@@ -39,22 +48,23 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, width = 640, h
               msg = "Permiso denegado. Por favor permita el acceso a la cámara en su navegador.";
           } else if (err.name === 'NotFoundError') {
               msg = "No se encontró ninguna cámara.";
+          } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+              msg = "La cámara está siendo usada por otra aplicación o pestaña. Por favor ciérrela e intente de nuevo.";
+          } else if (err.name === 'OverconstrainedError') {
+              msg = "La cámara no soporta la resolución solicitada.";
           }
       }
       setError(msg);
     }
-  }, [stream, width, height]);
+  }, [width, height, stopCamera]);
 
   useEffect(() => {
     startCamera();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      stopCamera();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [startCamera, stopCamera]);
 
   const handleCapture = () => {
     if (videoRef.current && canvasRef.current) {
