@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   name: string;
@@ -34,8 +33,8 @@ export interface Role {
 export interface Shift {
   id: string;
   name: string;
-  startTime: string; // e.g., "06:00"
-  endTime: string;   // e.g., "14:00"
+  start_time: string; // e.g., "06:00" - Changed to snake_case
+  end_time: string;   // e.g., "14:00" - Changed to snake_case
   color: string;     // e.g., "#34D399" for UI color coding
 }
 
