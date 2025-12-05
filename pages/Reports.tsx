@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { dbService } from '../services/dbService';
 import { AttendanceRecord, Collaborator, Visit } from '../types';
@@ -7,18 +6,33 @@ import Spinner from '../components/Spinner';
 const Reports: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'attendance' | 'visits'>('attendance');
   
+  // Helper to get the first day of the current month in YYYY-MM-DD format
+  const getFirstDayOfMonth = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}-01`;
+  };
+
+  // Helper to get today's date in YYYY-MM-DD format
+  const getToday = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Attendance State
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [selectedCollaborator, setSelectedCollaborator] = useState<string>('all');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>(getFirstDayOfMonth()); // Default to first day of current month
+  const [endDate, setEndDate] = useState<string>(getToday()); // Default to today
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+  const [currentPage, setCurrentPage] = useState(1); // New state for pagination
+  const [recordsPerPage] = useState(10); // Number of records per page
+
   // Visits State
-  // Initialize with today's date by default
-  const getToday = () => new Date().toISOString().split('T')[0];
   const [visits, setVisits] = useState<Visit[]>([]);
   const [visitStartDate, setVisitStartDate] = useState<string>(getToday());
   const [visitEndDate, setVisitEndDate] = useState<string>(getToday());
@@ -141,6 +155,14 @@ const Reports: React.FC = () => {
     });
   }, [filteredRecords]);
 
+  // Pagination logic for attendance detail
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const currentAttendanceRecords = filteredRecords.slice(indexOfFirstRecord, indexOfLastRecord);
+  const totalAttendancePages = Math.ceil(filteredRecords.length / recordsPerPage);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
   const TabButton: React.FC<{ tab: 'attendance' | 'visits'; label: string }> = ({ tab, label }) => (
     <button
       onClick={() => setActiveTab(tab)}
@@ -170,18 +192,18 @@ const Reports: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label htmlFor="collaborator" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Colaborador</label>
-                <select id="collaborator" value={selectedCollaborator} onChange={e => setSelectedCollaborator(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                <select id="collaborator" value={selectedCollaborator} onChange={e => { setSelectedCollaborator(e.target.value); setCurrentPage(1); }} className="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                   <option value="all">Todos</option>
                   {collaborators.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
                 </select>
               </div>
               <div>
                 <label htmlFor="start-date" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Fecha de Inicio</label>
-                <input type="date" id="start-date" value={startDate} onChange={e => setStartDate(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
+                <input type="date" id="start-date" value={startDate} onChange={e => { setStartDate(e.target.value); setCurrentPage(1); }} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
               </div>
               <div>
                 <label htmlFor="end-date" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Fecha de Fin</label>
-                <input type="date" id="end-date" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
+                <input type="date" id="end-date" value={endDate} onChange={e => { setEndDate(e.target.value); setCurrentPage(1); }} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
               </div>
             </div>
           </div>
@@ -243,8 +265,8 @@ const Reports: React.FC = () => {
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {isLoading ? (
                     <tr><td colSpan={5} className="text-center py-8"><Spinner /></td></tr>
-                  ) : filteredRecords.length > 0 ? (
-                    filteredRecords.map(record => (
+                  ) : currentAttendanceRecords.length > 0 ? (
+                    currentAttendanceRecords.map(record => (
                       <tr key={record.id}>
                          <td className="px-6 py-4 whitespace-nowrap">
                            {record.captured_photo_url && (
@@ -272,6 +294,27 @@ const Reports: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            {totalAttendancePages > 1 && (
+                <div className="flex justify-center items-center space-x-2 p-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-700">
+                    <button
+                        onClick={() => paginate(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+                    >
+                        Anterior
+                    </button>
+                    <span className="text-sm text-gray-700 dark:text-gray-200">
+                        Página {currentPage} de {totalAttendancePages}
+                    </span>
+                    <button
+                        onClick={() => paginate(currentPage + 1)}
+                        disabled={currentPage === totalAttendancePages}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+                    >
+                        Siguiente
+                    </button>
+                </div>
+            )}
           </div>
         </>
       ) : (
