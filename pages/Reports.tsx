@@ -1,8 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { dbService } from '../services/dbService';
-import { AttendanceRecord, Collaborator, Visit } from '../types';
 import Spinner from '../components/Spinner';
-import { exportToPdf, exportToExcel, formatters } from '../utils/exportUtils';
+import { exportToPdf, exportToExcel, formatters } from '../src/utils/exportUtils'; // Corrected path
 
 const Reports: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'attendance' | 'visits'>('attendance');
