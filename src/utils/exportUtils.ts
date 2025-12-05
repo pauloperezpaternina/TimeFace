@@ -1,5 +1,5 @@
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable'; // Simplified import path
+import jsPDF from 'jspdf'; // Changed to default import
+import 'jspdf-autotable'; 
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
