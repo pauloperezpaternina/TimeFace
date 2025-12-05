@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { dbService } from '../services/dbService';
 import { AttendanceRecord, Collaborator, Visit } from '../types';
 import Spinner from '../components/Spinner';
+import { exportToPdf, exportToExcel, formatters } from '../utils/exportUtils';
 
 const Reports: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'attendance' | 'visits'>('attendance');
@@ -31,6 +32,7 @@ const Reports: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1); // New state for pagination
   const [recordsPerPage] = useState(10); // Number of records per page
+  const [isAttendanceExporting, setIsAttendanceExporting] = useState(false); // New state for export loading
 
   // Visits State
   const [visits, setVisits] = useState<Visit[]>([]);
@@ -39,6 +41,7 @@ const Reports: React.FC = () => {
   const [visitSearch, setVisitSearch] = useState<string>('');
   const [isVisitsLoading, setIsVisitsLoading] = useState(false);
   const [visitsError, setVisitsError] = useState<string | null>(null);
+  const [isVisitsExporting, setIsVisitsExporting] = useState(false); // New state for export loading
 
   // Shared State (Lightbox)
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -176,6 +179,119 @@ const Reports: React.FC = () => {
     </button>
   );
 
+  const handleExportAttendanceSummaryPdf = async () => {
+    setIsAttendanceExporting(true);
+    try {
+      const headers = ['Colaborador', 'Horas Programadas', 'Horas Trabajadas', 'Horas Extra'];
+      const data = reportData.map(row => [
+        row.collaboratorName,
+        row.scheduledHours,
+        row.totalHours,
+        row.overtime
+      ]);
+      exportToPdf('Resumen de Horas Trabajadas', headers, data, 'reporte_asistencia_resumen');
+    } catch (e) {
+      console.error("Error exporting attendance summary to PDF:", e);
+      alert("Error al exportar el resumen de asistencia a PDF.");
+    } finally {
+      setIsAttendanceExporting(false);
+    }
+  };
+
+  const handleExportAttendanceSummaryExcel = async () => {
+    setIsAttendanceExporting(true);
+    try {
+      const data = reportData.map(row => ({
+        Colaborador: row.collaboratorName,
+        'Horas Programadas': row.scheduledHours,
+        'Horas Trabajadas': row.totalHours,
+        'Horas Extra': row.overtime
+      }));
+      exportToExcel(data, 'reporte_asistencia_resumen');
+    } catch (e) {
+      console.error("Error exporting attendance summary to Excel:", e);
+      alert("Error al exportar el resumen de asistencia a Excel.");
+    } finally {
+      setIsAttendanceExporting(false);
+    }
+  };
+
+  const handleExportAttendanceDetailPdf = async () => {
+    setIsAttendanceExporting(true);
+    try {
+      const headers = ['Colaborador', 'Fecha', 'Hora', 'Tipo'];
+      const data = filteredRecords.map(record => [
+        record.collaborator_name,
+        formatters.formatDate(record.timestamp),
+        formatters.formatTime(record.timestamp),
+        record.type === 'entry' ? 'Entrada' : 'Salida'
+      ]);
+      exportToPdf('Detalle de Asistencia', headers, data, 'reporte_asistencia_detalle');
+    } catch (e) {
+      console.error("Error exporting attendance detail to PDF:", e);
+      alert("Error al exportar el detalle de asistencia a PDF.");
+    } finally {
+      setIsAttendanceExporting(false);
+    }
+  };
+
+  const handleExportAttendanceDetailExcel = async () => {
+    setIsAttendanceExporting(true);
+    try {
+      const data = filteredRecords.map(record => ({
+        Colaborador: record.collaborator_name,
+        Fecha: formatters.formatDate(record.timestamp),
+        Hora: formatters.formatTime(record.timestamp),
+        Tipo: record.type === 'entry' ? 'Entrada' : 'Salida',
+        'URL Foto': record.captured_photo_url || ''
+      }));
+      exportToExcel(data, 'reporte_asistencia_detalle');
+    } catch (e) {
+      console.error("Error exporting attendance detail to Excel:", e);
+      alert("Error al exportar el detalle de asistencia a Excel.");
+    } finally {
+      setIsAttendanceExporting(false);
+    }
+  };
+
+  const handleExportVisitsPdf = async () => {
+    setIsVisitsExporting(true);
+    try {
+      const headers = ['Fecha y Hora', 'Visitante', 'Cédula', 'Empresa'];
+      const data = visits.map(visit => [
+        formatters.formatDateTime(visit.timestamp),
+        visit.full_name,
+        visit.gov_id,
+        visit.company
+      ]);
+      exportToPdf('Historial de Visitas', headers, data, 'reporte_historial_visitas');
+    } catch (e) {
+      console.error("Error exporting visits to PDF:", e);
+      alert("Error al exportar el historial de visitas a PDF.");
+    } finally {
+      setIsVisitsExporting(false);
+    }
+  };
+
+  const handleExportVisitsExcel = async () => {
+    setIsVisitsExporting(true);
+    try {
+      const data = visits.map(visit => ({
+        'Fecha y Hora': formatters.formatDateTime(visit.timestamp),
+        Visitante: visit.full_name,
+        Cédula: visit.gov_id,
+        Empresa: visit.company,
+        'URL Firma': visit.signature_url || ''
+      }));
+      exportToExcel(data, 'reporte_historial_visitas');
+    } catch (e) {
+      console.error("Error exporting visits to Excel:", e);
+      alert("Error al exportar el historial de visitas a Excel.");
+    } finally {
+      setIsVisitsExporting(false);
+    }
+  };
+
   return (
     <div className="container mx-auto">
       <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-200">Reportes</h1>
@@ -209,7 +325,27 @@ const Reports: React.FC = () => {
           </div>
           
           <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden mb-8">
-             <h2 className="text-xl font-bold p-6">Resumen de Horas Trabajadas</h2>
+             <div className="flex justify-between items-center p-6">
+                <h2 className="text-xl font-bold">Resumen de Horas Trabajadas</h2>
+                <div className="flex space-x-2">
+                    <button 
+                        onClick={handleExportAttendanceSummaryPdf} 
+                        disabled={isAttendanceExporting || reportData.length === 0}
+                        className="px-3 py-1.5 bg-red-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-red-700 disabled:opacity-50 flex items-center"
+                    >
+                        {isAttendanceExporting && <Spinner size="4" />}
+                        <span className={isAttendanceExporting ? "ml-2" : ""}>PDF</span>
+                    </button>
+                    <button 
+                        onClick={handleExportAttendanceSummaryExcel} 
+                        disabled={isAttendanceExporting || reportData.length === 0}
+                        className="px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-green-700 disabled:opacity-50 flex items-center"
+                    >
+                        {isAttendanceExporting && <Spinner size="4" />}
+                        <span className={isAttendanceExporting ? "ml-2" : ""}>Excel</span>
+                    </button>
+                </div>
+             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
@@ -250,7 +386,27 @@ const Reports: React.FC = () => {
           </div>
 
           <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden">
-            <h2 className="text-xl font-bold p-6">Detalle de Asistencia</h2>
+            <div className="flex justify-between items-center p-6">
+                <h2 className="text-xl font-bold">Detalle de Asistencia</h2>
+                <div className="flex space-x-2">
+                    <button 
+                        onClick={handleExportAttendanceDetailPdf} 
+                        disabled={isAttendanceExporting || filteredRecords.length === 0}
+                        className="px-3 py-1.5 bg-red-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-red-700 disabled:opacity-50 flex items-center"
+                    >
+                        {isAttendanceExporting && <Spinner size="4" />}
+                        <span className={isAttendanceExporting ? "ml-2" : ""}>PDF</span>
+                    </button>
+                    <button 
+                        onClick={handleExportAttendanceDetailExcel} 
+                        disabled={isAttendanceExporting || filteredRecords.length === 0}
+                        className="px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-green-700 disabled:opacity-50 flex items-center"
+                    >
+                        {isAttendanceExporting && <Spinner size="4" />}
+                        <span className={isAttendanceExporting ? "ml-2" : ""}>Excel</span>
+                    </button>
+                </div>
+            </div>
              <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
@@ -279,8 +435,8 @@ const Reports: React.FC = () => {
                            )}
                          </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{record.collaborator_name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(record.timestamp).toLocaleDateString('es-CO')}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(record.timestamp).toLocaleTimeString('es-CO')}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{formatters.formatDate(record.timestamp)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{formatters.formatTime(record.timestamp)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                            <span className={`px-3 py-1 text-xs font-medium rounded-full ${record.type === 'entry' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>
                              {record.type === 'entry' ? 'Entrada' : 'Salida'}
@@ -346,7 +502,27 @@ const Reports: React.FC = () => {
           </div>
 
           <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden">
-            <h2 className="text-xl font-bold p-6">Historial de Visitas</h2>
+            <div className="flex justify-between items-center p-6">
+                <h2 className="text-xl font-bold">Historial de Visitas</h2>
+                <div className="flex space-x-2">
+                    <button 
+                        onClick={handleExportVisitsPdf} 
+                        disabled={isVisitsExporting || visits.length === 0}
+                        className="px-3 py-1.5 bg-red-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-red-700 disabled:opacity-50 flex items-center"
+                    >
+                        {isVisitsExporting && <Spinner size="4" />}
+                        <span className={isVisitsExporting ? "ml-2" : ""}>PDF</span>
+                    </button>
+                    <button 
+                        onClick={handleExportVisitsExcel} 
+                        disabled={isVisitsExporting || visits.length === 0}
+                        className="px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-green-700 disabled:opacity-50 flex items-center"
+                    >
+                        {isVisitsExporting && <Spinner size="4" />}
+                        <span className={isVisitsExporting ? "ml-2" : ""}>Excel</span>
+                    </button>
+                </div>
+            </div>
              <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
@@ -366,8 +542,8 @@ const Reports: React.FC = () => {
                     visits.map(visit => (
                       <tr key={visit.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                            {new Date(visit.timestamp).toLocaleDateString('es-CO')} <br/>
-                            <span className="text-xs">{new Date(visit.timestamp).toLocaleTimeString('es-CO')}</span>
+                            {formatters.formatDate(visit.timestamp)} <br/>
+                            <span className="text-xs">{formatters.formatTime(visit.timestamp)}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                             {visit.full_name} <br/>
