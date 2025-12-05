@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable/dist/jspdf.plugin.autotable'; // Corrected import path for the plugin
+import 'jspdf-autotable'; // Simplified import path
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
