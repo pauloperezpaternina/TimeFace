@@ -10,17 +10,17 @@ const ShiftForm: React.FC<{
   onCancel: () => void;
 }> = ({ shiftToEdit, onSave, onCancel }) => {
   const [name, setName] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [start_time, setStartTime] = useState(''); // Changed to start_time
+  const [end_time, setEndTime] = useState('');     // Changed to end_time
   const [color, setColor] = useState('#3B82F6');
   const [isSaving, setIsSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null); // New state for form-specific errors
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (shiftToEdit) {
       setName(shiftToEdit.name);
-      setStartTime(shiftToEdit.startTime);
-      setEndTime(shiftToEdit.endTime);
+      setStartTime(shiftToEdit.start_time); // Use start_time
+      setEndTime(shiftToEdit.end_time);     // Use end_time
       setColor(shiftToEdit.color);
     } else {
       setName('');
@@ -28,15 +28,15 @@ const ShiftForm: React.FC<{
       setEndTime('');
       setColor('#3B82F6');
     }
-    setFormError(null); // Clear error when form opens or changes edit context
+    setFormError(null);
   }, [shiftToEdit]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setFormError(null); // Clear previous errors
+    setFormError(null);
     try {
-      const shiftData = { name, startTime, endTime, color };
+      const shiftData = { name, start_time, end_time, color }; // Use start_time, end_time
       if (shiftToEdit) {
         await dbService.updateShift({ ...shiftToEdit, ...shiftData });
       } else {
@@ -46,7 +46,7 @@ const ShiftForm: React.FC<{
     } catch (error) {
       console.error("Failed to save shift:", error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido al guardar el turno.';
-      setFormError(errorMessage); // Set the specific error message
+      setFormError(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -61,11 +61,11 @@ const ShiftForm: React.FC<{
         <div className="grid grid-cols-2 gap-4">
             <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Hora de Inicio</label>
-                <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" style={{colorScheme: 'light'}}/>
+                <input type="time" value={start_time} onChange={e => setStartTime(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" style={{colorScheme: 'light'}}/>
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Hora de Fin</label>
-                <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" style={{colorScheme: 'light'}}/>
+                <input type="time" value={end_time} onChange={e => setEndTime(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" style={{colorScheme: 'light'}}/>
             </div>
         </div>
          <div>
@@ -160,7 +160,7 @@ const ManageShifts: React.FC = () => {
                         <div style={{backgroundColor: shift.color}} className="w-4 h-4 rounded-full mr-4"></div>
                         <div>
                             <p className="font-bold">{shift.name}</p>
-                            <p className="text-sm text-gray-500">{shift.startTime} - {shift.endTime}</p>
+                            <p className="text-sm text-gray-500">{shift.start_time} - {shift.end_time}</p>
                         </div>
                     </div>
                     <div className="space-x-2">
