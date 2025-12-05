@@ -14,6 +14,7 @@ const ShiftForm: React.FC<{
   const [endTime, setEndTime] = useState('');
   const [color, setColor] = useState('#3B82F6');
   const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null); // New state for form-specific errors
 
   useEffect(() => {
     if (shiftToEdit) {
@@ -27,11 +28,13 @@ const ShiftForm: React.FC<{
       setEndTime('');
       setColor('#3B82F6');
     }
+    setFormError(null); // Clear error when form opens or changes edit context
   }, [shiftToEdit]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    setFormError(null); // Clear previous errors
     try {
       const shiftData = { name, startTime, endTime, color };
       if (shiftToEdit) {
@@ -42,7 +45,8 @@ const ShiftForm: React.FC<{
       onSave();
     } catch (error) {
       console.error("Failed to save shift:", error);
-      alert('Error al guardar el turno.');
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido al guardar el turno.';
+      setFormError(errorMessage); // Set the specific error message
     } finally {
       setIsSaving(false);
     }
@@ -68,6 +72,12 @@ const ShiftForm: React.FC<{
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Color</label>
             <input type="color" value={color} onChange={e => setColor(e.target.value)} required className="mt-1 block w-full h-10 p-1 border rounded-md dark:bg-gray-800 dark:border-gray-600"/>
         </div>
+        {formError && (
+            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+                <p className="font-bold">Error:</p>
+                <p>{formError}</p>
+            </div>
+        )}
         <div className="flex justify-end space-x-2">
             <button type="button" onClick={onCancel} disabled={isSaving} className="px-4 py-2 border rounded-md disabled:opacity-50">Cancelar</button>
             <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white rounded-md flex items-center disabled:opacity-50">
