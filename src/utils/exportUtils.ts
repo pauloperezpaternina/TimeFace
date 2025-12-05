@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
@@ -42,7 +42,7 @@ export const exportToPdf = (title: string, headers: string[], data: any[][], fil
     doc.setFontSize(18);
     doc.text(title, 14, 22);
 
-    (doc as any).autoTable({
+    autoTable(doc, {
         startY: 30,
         head: [headers],
         body: data,
