@@ -42,7 +42,7 @@ export const exportToPdf = (title: string, headers: string[], data: any[][], fil
     doc.setFontSize(18);
     doc.text(title, 14, 22);
 
-    autoTable(doc, {
+    (doc as any).autoTable({
         startY: 30,
         head: [headers],
         body: data,
