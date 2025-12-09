@@ -12,14 +12,14 @@ interface RecognitionResult {
 
 // Helper para convertir una URL de imagen a formato Base64
 async function imageUrlToBase64(url: string): Promise<string> {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 // Helper para obtener la fecha como YYYY-MM-DD en la zona horaria local, evitando problemas de conversión a UTC.
@@ -54,7 +54,7 @@ const Dashboard: React.FC = () => {
     fetchDailyRecords(selectedDate);
     return () => clearInterval(timer);
   }, [fetchDailyRecords, selectedDate]);
-  
+
   const handleCapture = async (imageBase64: string) => {
     setIsLoading(true);
     setResult({ status: 'info', message: 'Identificando colaborador...' });
@@ -66,7 +66,7 @@ const Dashboard: React.FC = () => {
         setIsLoading(false);
         return;
       }
-      
+
       let matchFound: Collaborator | null = null;
       for (const collaborator of collaborators) {
         if (collaborator.photo) {
@@ -92,7 +92,23 @@ const Dashboard: React.FC = () => {
 
         const lastRecord = await dbService.getLastRecordForCollaborator(matchFound.id);
         const recordType = lastRecord?.type === 'entry' ? 'exit' : 'entry';
-        
+
+        // --- NEW VALIDATION: Block if open shift is from a previous day ---
+        if (lastRecord && lastRecord.type === 'entry') {
+          const lastRecordDate = getLocalDateString(new Date(lastRecord.timestamp));
+          const todayDate = getLocalDateString(new Date());
+
+          if (lastRecordDate !== todayDate) {
+            setResult({
+              status: 'error',
+              message: `Acceso bloqueado. Tienes un turno abierto del día ${lastRecordDate}. Por favor contacta a RRHH para registrar tu salida manual.`
+            });
+            setIsLoading(false);
+            return;
+          }
+        }
+        // ------------------------------------------------------------------
+
         await dbService.addAttendanceRecord({
           collaborator_id: matchFound.id,
           collaborator_name: matchFound.name,
@@ -102,10 +118,10 @@ const Dashboard: React.FC = () => {
 
         const newStatus = recordType === 'entry' ? 'present' : schedule.status;
         await dbService.updateSchedule({ ...schedule, status: newStatus });
-        
+
         const message = `Registro de ${recordType === 'entry' ? 'entrada' : 'salida'} exitoso para ${matchFound.name}.`;
         setResult({ status: 'success', message });
-        
+
         // Vuelve a la fecha de hoy para mostrar el nuevo registro.
         const todayString = getLocalDateString();
         if (selectedDate !== todayString) {
@@ -119,11 +135,11 @@ const Dashboard: React.FC = () => {
       }
 
     } catch (error) {
-        console.error("Error durante el proceso de reconocimiento:", error);
-        const errorMessage = error instanceof Error ? error.message : 'Ocurrió un error desconocido.';
-        setResult({ status: 'error', message: `Error durante el proceso de reconocimiento: ${errorMessage}` });
+      console.error("Error durante el proceso de reconocimiento:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Ocurrió un error desconocido.';
+      setResult({ status: 'error', message: `Error durante el proceso de reconocimiento: ${errorMessage}` });
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -147,8 +163,8 @@ const Dashboard: React.FC = () => {
           <h2 className="text-xl font-semibold mb-4 text-center">Registro Facial</h2>
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-96">
-                <Spinner size="12" />
-                <p className="mt-4 text-lg">{result.message || 'Procesando imagen...'}</p>
+              <Spinner size="12" />
+              <p className="mt-4 text-lg">{result.message || 'Procesando imagen...'}</p>
             </div>
           ) : (
             <CameraCapture onCapture={handleCapture} />
@@ -160,25 +176,25 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </div>
-        
+
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Registros del Día</h2>
-             <div className="relative">
-                <label htmlFor="date-picker" className="cursor-pointer relative flex items-center">
-                    <input 
-                      id="date-picker"
-                      type="date" 
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-200 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pr-10 p-2.5"
-                    />
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                        <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z"/>
-                        </svg>
-                    </div>
-                </label>
+            <div className="relative">
+              <label htmlFor="date-picker" className="cursor-pointer relative flex items-center">
+                <input
+                  id="date-picker"
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-200 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pr-10 p-2.5"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
+                  </svg>
+                </div>
+              </label>
             </div>
           </div>
           <div className="overflow-y-auto max-h-96">
@@ -188,7 +204,7 @@ const Dashboard: React.FC = () => {
                   <li key={record.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <div className="flex items-center space-x-4">
                       {record.captured_photo_url && (
-                        <img src={record.captured_photo_url} alt={`Foto de ${record.collaborator_name}`} className="h-12 w-12 rounded-full object-cover"/>
+                        <img src={record.captured_photo_url} alt={`Foto de ${record.collaborator_name}`} className="h-12 w-12 rounded-full object-cover" />
                       )}
                       <div>
                         <p className="font-semibold text-gray-800 dark:text-gray-200">{record.collaborator_name}</p>
