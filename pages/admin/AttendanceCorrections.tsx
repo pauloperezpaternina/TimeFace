@@ -111,16 +111,13 @@ const AttendanceCorrections: React.FC = () => {
             // Let's send a 1x1 transparent pixel base64 to satisfy specific impl.
             // In a pro app, we'd adjust the backend to allow null photos for admin corrections.
 
-            // 1x1 Transparent PNG
-            const emptyPixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
-
             // Actually, we should call the addRecord with the pixel
             await dbService.addAttendanceRecord({
                 collaborator_id: selectedUser.collaborator.id,
                 collaborator_name: selectedUser.collaborator.name,
                 timestamp: timestamp,
                 type: 'exit'
-            }, emptyPixel);
+            }, null);
 
             handleCloseModal();
             loadOpenShifts(); // Refresh list
