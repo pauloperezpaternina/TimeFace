@@ -248,6 +248,7 @@ class DbService {
         return supabaseRequest<Schedule>(supabase.from('schedules').insert(newSchedule).select().single());
     }
     updateSchedule(schedule: Schedule): Promise<Schedule> { return supabaseRequest<Schedule>(supabase.from('schedules').update(schedule).eq('id', schedule.id).select().single()); }
+    deleteSchedule(scheduleId: string): Promise<void> { return supabaseRequest<void>(supabase.from('schedules').delete().eq('id', scheduleId)); }
 
     async generateSchedules(patternId: string, startDate: string, endDate: string, collaboratorIds: string[]): Promise<void> {
         const pattern = await supabaseRequest<ShiftPattern>(supabase.from('shift_patterns').select('sequence').eq('id', patternId).single());
