@@ -218,6 +218,9 @@ const VisitorRegistration: React.FC<VisitorRegistrationProps> = ({ setCurrentPag
         <div className="lg:col-span-2">
             <div className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl overflow-hidden">
                 <div className="bg-blue-600 px-6 py-4">
+                    <div className="flex justify-center mb-2">
+                        <img src="/logo.png" alt="Logo" className="h-16 w-auto" />
+                    </div>
                     <h1 className="text-2xl font-bold text-white text-center">Registro de Visitantes</h1>
                     <p className="text-blue-100 text-center text-sm mt-1">Complete el formulario para registrar su ingreso</p>
                 </div>
