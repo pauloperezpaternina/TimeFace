@@ -11,9 +11,10 @@ const VisitorRegistration: React.FC = () => {
   const [company, setCompany] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [consentGiven, setConsentGiven] = useState(false);
+  const [consentGiven, setConsentGiven] = useState(false); // This state is not currently used, but kept for potential future use.
   const [showConsentModal, setShowConsentModal] = useState(false);
-  
+  const [pendingSignatureData, setPendingSignatureData] = useState<string | null>(null); // New state to hold signature data
+
   const signaturePadRef = useRef<SignaturePadRef>(null);
   
   // List of today's visits
@@ -98,25 +99,30 @@ const VisitorRegistration: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("handleSubmit called");
     
     if (!fullName || !govId || !company) {
       alert("Por favor, complete todos los campos.");
+      console.log("Validation failed: Missing fields");
       return;
     }
     
     if (signaturePadRef.current && signaturePadRef.current.isEmpty()) {
       alert("Por favor, firme el registro.");
+      console.log("Validation failed: Signature is empty");
       return;
     }
     
     const signatureData = signaturePadRef.current?.getSignature();
     if (!signatureData) {
       alert("Error al obtener la firma.");
+      console.log("Validation failed: Could not get signature data");
       return;
     }
     
-    // Show consent modal before submitting
-    setShowConsentModal(true);
+    setPendingSignatureData(signatureData); // Store signature data
+    setShowConsentModal(true); // Show consent modal before submitting
+    console.log("Consent modal shown.");
   };
 
   const handleConsentSubmit = async () => {
@@ -124,11 +130,15 @@ const VisitorRegistration: React.FC = () => {
     setShowConsentModal(false);
     
     try {
+      if (!pendingSignatureData) {
+        throw new Error("No signature data available for submission.");
+      }
+
       await dbService.registerVisit({
         full_name: fullName,
         gov_id: govId,
         company: company,
-      }, signatureData);
+      }, pendingSignatureData); // Use the stored signature data
       
       setSuccessMessage("Visita registrada exitosamente.");
       loadTodaysVisits(); // Reload list
@@ -140,7 +150,8 @@ const VisitorRegistration: React.FC = () => {
       handleClearSignature();
       setSuggestions([]);
       setActiveField(null);
-      setConsentGiven(false);
+      setConsentGiven(false); // Reset consent state
+      setPendingSignatureData(null); // Clear pending signature data
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -154,6 +165,7 @@ const VisitorRegistration: React.FC = () => {
 
   const handleDeclineConsent = () => {
     setShowConsentModal(false);
+    setPendingSignatureData(null); // Clear pending signature data if consent is declined
     // Redirect to attendance page
     navigate('/dashboard');
   };
