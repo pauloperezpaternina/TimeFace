@@ -1,21 +1,27 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { dbService } from '../services/dbService';
 import SignaturePad, { SignaturePadRef } from '../components/SignaturePad';
 import Spinner from '../components/Spinner';
 import { Visit } from '../types';
+import { Page } from '../App'; // Import Page type
 
-const VisitorRegistration: React.FC = () => {
+interface VisitorRegistrationProps {
+  setCurrentPage: (page: Page) => void; // Add setCurrentPage to props
+}
+
+const VisitorRegistration: React.FC<VisitorRegistrationProps> = ({ setCurrentPage }) => {
   const [fullName, setFullName] = useState('');
   const [govId, setGovId] = useState('');
   const [company, setCompany] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [consentGiven, setConsentGiven] = useState(false); // New state for consent
+  
   const signaturePadRef = useRef<SignaturePadRef>(null);
   
   // List of today's visits
   const [todaysVisits, setTodaysVisits] = useState<Visit[]>([]);
-
+  
   // Autocomplete state
   const [suggestions, setSuggestions] = useState<Visit[]>([]);
   const [activeField, setActiveField] = useState<'fullName' | 'govId' | null>(null);
@@ -32,12 +38,12 @@ const VisitorRegistration: React.FC = () => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const dateString = `${year}-${month}-${day}`;
-
+    
     try {
-        const visits = await dbService.getVisitsByDate(dateString);
-        setTodaysVisits(visits);
+      const visits = await dbService.getVisitsByDate(dateString);
+      setTodaysVisits(visits);
     } catch (e) {
-        console.error("Failed to load today's visits", e);
+      console.error("Failed to load today's visits", e);
     }
   };
 
@@ -60,9 +66,9 @@ const VisitorRegistration: React.FC = () => {
   const handleInputChange = (field: 'fullName' | 'govId', value: string) => {
     if (field === 'fullName') setFullName(value);
     else setGovId(value);
-
+    
     if (searchTimeout.current) {
-        window.clearTimeout(searchTimeout.current);
+      window.clearTimeout(searchTimeout.current);
     }
     
     // Only search if input has some length
@@ -71,7 +77,7 @@ const VisitorRegistration: React.FC = () => {
       setActiveField(null);
       return;
     }
-
+    
     searchTimeout.current = window.setTimeout(async () => {
       try {
         const results = await dbService.searchVisitors(value);
@@ -98,26 +104,26 @@ const VisitorRegistration: React.FC = () => {
       alert("Por favor, complete todos los campos.");
       return;
     }
-
+    
     if (signaturePadRef.current && signaturePadRef.current.isEmpty()) {
       alert("Por favor, firme el registro.");
       return;
     }
-
+    
     const signatureData = signaturePadRef.current?.getSignature();
     if (!signatureData) {
-        alert("Error al obtener la firma.");
-        return;
+      alert("Error al obtener la firma.");
+      return;
     }
-
+    
     setIsSubmitting(true);
     try {
       await dbService.registerVisit({
         full_name: fullName,
         gov_id: govId,
-        company: company
+        company: company,
       }, signatureData);
-
+      
       setSuccessMessage("Visita registrada exitosamente.");
       loadTodaysVisits(); // Reload list
       
@@ -128,10 +134,9 @@ const VisitorRegistration: React.FC = () => {
       handleClearSignature();
       setSuggestions([]);
       setActiveField(null);
-
+      
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000);
-
     } catch (error) {
       console.error("Error al registrar visita:", error);
       alert("Hubo un error al registrar la visita.");
@@ -144,6 +149,66 @@ const VisitorRegistration: React.FC = () => {
   const handleBlur = () => {
     setTimeout(() => setActiveField(null), 200);
   };
+
+  // Conditional rendering for consent screen
+  if (!consentGiven) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-8">
+        <div className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-8 max-w-2xl w-full">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">
+            AUTORIZACIÓN PARA EL TRATAMIENTO DE DATOS
+          </h1>
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">
+            Ley 1581 de 2012
+          </h2>
+          <div className="text-gray-700 dark:text-gray-300 text-sm space-y-3 mb-6 max-h-80 overflow-y-auto p-2 border rounded-md bg-gray-50 dark:bg-gray-700">
+            <p>
+              En cumplimiento de la Ley 1581 de 2012 y el Decreto 1377 de 2013,
+              autorizo de manera voluntaria, previa, explícita, informada e inequívoca
+              a **[Nombre de la Empresa]** para recolectar, almacenar, usar, circular,
+              suprimir, procesar, compilar, intercambiar, actualizar y disponer de
+              los datos que he suministrado, los cuales serán incorporados en una
+              base de datos de la que es responsable **[Nombre de la Empresa]**.
+            </p>
+            <p>
+              La información obtenida será utilizada para las siguientes finalidades:
+            </p>
+            <ul className="list-disc list-inside ml-4 space-y-1">
+              <li>Gestionar el control de acceso y seguridad de las instalaciones.</li>
+              <li>Mantener un registro de visitantes para fines de auditoría y cumplimiento.</li>
+              <li>Contactarme en caso de emergencia o para seguimiento de mi visita.</li>
+              <li>Realizar análisis estadísticos internos para mejorar nuestros servicios.</li>
+            </ul>
+            <p>
+              Declaro que se me ha informado sobre mis derechos como titular de datos,
+              especialmente el derecho a conocer, actualizar, rectificar y suprimir
+              mis datos personales, así como a revocar la autorización otorgada.
+              Estos derechos podrán ser ejercidos a través de los canales de atención
+              dispuestos por **[Nombre de la Empresa]**.
+            </p>
+            <p className="font-semibold">
+              Al hacer clic en "Acepto", usted manifiesta su consentimiento expreso
+              para el tratamiento de sus datos personales bajo las condiciones aquí descritas.
+            </p>
+          </div>
+          <div className="flex justify-center space-x-4 mt-6">
+            <button
+              onClick={() => setCurrentPage('dashboard')} // Redirect to dashboard if declined
+              className="px-6 py-3 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75 transition-colors duration-200"
+            >
+              No Acepto
+            </button>
+            <button
+              onClick={() => setConsentGiven(true)} // Show the form if accepted
+              className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition-colors duration-200"
+            >
+              Acepto
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -357,7 +422,10 @@ const VisitorRegistration: React.FC = () => {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 backdrop-blur-sm transition-opacity p-4"
           onClick={() => setSelectedSignature(null)}
         >
-          <div className="relative max-w-3xl w-full bg-white rounded-lg p-2 shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div 
+            className="relative max-w-3xl w-full bg-white rounded-lg p-2 shadow-2xl" 
+            onClick={e => e.stopPropagation()}
+          >
              <div className="flex justify-between items-center p-2 border-b mb-2">
                 <h3 className="text-lg font-bold text-gray-800">Firma Registrada</h3>
                 <button 

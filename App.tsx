@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
@@ -40,7 +39,7 @@ const App: React.FC = () => {
       case 'dashboard':
         return <Dashboard />;
       case 'visitor-registration':
-        return <VisitorRegistration />;
+        return <VisitorRegistration setCurrentPage={setCurrentPage} />;
       case 'scheduling':
         return <Scheduling />;
       case 'collaborators':
