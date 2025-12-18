@@ -165,10 +165,10 @@ const VisitorRegistration: React.FC<VisitorRegistrationProps> = ({ setCurrentPag
             <p>
               En cumplimiento de la Ley 1581 de 2012 y el Decreto 1377 de 2013,
               autorizo de manera voluntaria, previa, explícita, informada e inequívoca
-              a **[Nombre de la Empresa]** para recolectar, almacenar, usar, circular,
+              a Logiservices ZF S.A.S. para recolectar, almacenar, usar, circular,
               suprimir, procesar, compilar, intercambiar, actualizar y disponer de
               los datos que he suministrado, los cuales serán incorporados en una
-              base de datos de la que es responsable **[Nombre de la Empresa]**.
+              base de datos de la que es responsable Logiservices ZF S.A.S.
             </p>
             <p>
               La información obtenida será utilizada para las siguientes finalidades:
@@ -184,7 +184,7 @@ const VisitorRegistration: React.FC<VisitorRegistrationProps> = ({ setCurrentPag
               especialmente el derecho a conocer, actualizar, rectificar y suprimir
               mis datos personales, así como a revocar la autorización otorgada.
               Estos derechos podrán ser ejercidos a través de los canales de atención
-              dispuestos por **[Nombre de la Empresa]**.
+              dispuestos por Logiservices ZF S.A.S. en su pagina web 
             </p>
             <p className="font-semibold">
               Al hacer clic en "Acepto", usted manifiesta su consentimiento expreso
