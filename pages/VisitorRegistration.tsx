@@ -214,7 +214,7 @@ const VisitorRegistration: React.FC<VisitorRegistrationProps> = ({ setCurrentPag
     <div className="container mx-auto px-4 py-8">
       {/* Logo outside the form */}
       <div className="flex justify-center mb-6">
-        <img src="/logo.png" alt="Logo" className="h-24 w-auto" />
+        <img src="https://logiserviceszf.com.co/wp-content/uploads/2021/12/LOGO-ORIGINAL-JUNIO-2021.png" alt="Logo" className="h-24 w-auto" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -156,7 +156,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="container mx-auto">
       <div className="flex justify-center mb-4">
-        <img src="/logo.png" alt="Logo" className="h-24 w-auto" />
+        <img src="https://logiserviceszf.com.co/wp-content/uploads/2021/12/LOGO-ORIGINAL-JUNIO-2021.png" alt="Logo" className="h-24 w-auto" />
       </div>
       <h1 className="text-3xl font-bold mb-2 text-center text-gray-800 dark:text-gray-200">Control de Asistencia por Turno</h1>
       <p className="text-center text-gray-600 dark:text-gray-400 mb-6">{currentTime.toLocaleString('es-CO')}</p>
