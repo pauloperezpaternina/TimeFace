@@ -96,28 +96,13 @@ const AttendanceCorrections: React.FC = () => {
                 return;
             }
 
+            // Only one call to addAttendanceRecord is needed
             await dbService.addAttendanceRecord({
                 collaborator_id: selectedUser.collaborator.id,
                 collaborator_name: selectedUser.collaborator.name,
                 timestamp: timestamp,
                 type: 'exit'
-            }, ''); // Empty base64 for admin manual entry, or use a placeholder? dbService handles it.
-
-            // Note: DB service requires a base64 string for photo.
-            // We might need to handle this in dbService to allow null/empty for manual records
-            // For now, passing empty string. DB Service logic:
-            // uploadAttendancePhoto -> base64ToBlob -> atob(base64.split(',')[1])
-            // This will crash if we send empty string.
-            // Let's send a 1x1 transparent pixel base64 to satisfy specific impl.
-            // In a pro app, we'd adjust the backend to allow null photos for admin corrections.
-
-            // Actually, we should call the addRecord with the pixel
-            await dbService.addAttendanceRecord({
-                collaborator_id: selectedUser.collaborator.id,
-                collaborator_name: selectedUser.collaborator.name,
-                timestamp: timestamp,
-                type: 'exit'
-            }, null);
+            }, null); // Pass null for photoBase64 as it's a manual entry
 
             handleCloseModal();
             loadOpenShifts(); // Refresh list
