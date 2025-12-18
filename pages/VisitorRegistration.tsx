@@ -184,7 +184,7 @@ const VisitorRegistration: React.FC<VisitorRegistrationProps> = ({ setCurrentPag
               especialmente el derecho a conocer, actualizar, rectificar y suprimir
               mis datos personales, así como a revocar la autorización otorgada.
               Estos derechos podrán ser ejercidos a través de los canales de atención
-              dispuestos por Logiservices ZF S.A.S. en su pagina web 
+              dispuestos por Logiservices ZF S.A.S. en su pagina web logiserviceszf.com.co
             </p>
             <p className="font-semibold">
               Al hacer clic en "Acepto", usted manifiesta su consentimiento expreso
