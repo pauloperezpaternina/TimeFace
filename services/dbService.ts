@@ -137,8 +137,8 @@ class DbService {
     const id = generateId();
     const newRecord = { ...record, id, captured_photo_url: photoBase64 || undefined };
     await turso.execute({
-      sql: 'INSERT INTO attendance_records (id, collaborator_id, collaborator_name, timestamp, type, captured_photo_url) VALUES (?, ?, ?, ?, ?, ?)',
-      args: [id, record.collaborator_id, record.collaborator_name, record.timestamp, record.type, photoBase64 || null],
+      sql: 'INSERT INTO attendance_records (id, collaborator_id, collaborator_name, timestamp, type, captured_photo_url, latitude, longitude, location_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [id, record.collaborator_id, record.collaborator_name, record.timestamp, record.type, photoBase64 || null, record.latitude || null, record.longitude || null, record.location_name || null],
     });
     return newRecord as AttendanceRecord;
   }

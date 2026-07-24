@@ -23,6 +23,9 @@ export interface AttendanceRecord {
   timestamp: string; // Changed from number to string to store ISO date format
   type: AttendanceType;
   captured_photo_url?: string;
+  latitude?: number;
+  longitude?: number;
+  location_name?: string;
 }
 
 export interface Role {

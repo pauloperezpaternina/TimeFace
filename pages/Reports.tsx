@@ -438,9 +438,32 @@ const Reports: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{formatters.formatDate(record.timestamp)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{formatters.formatTime(record.timestamp)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                           <span className={`px-3 py-1 text-xs font-medium rounded-full ${record.type === 'entry' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>
-                             {record.type === 'entry' ? 'Entrada' : 'Salida'}
-                           </span>
+                          <div className="flex items-center gap-3">
+                            <span className={`px-3 py-1 text-xs font-medium rounded-full ${record.type === 'entry' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>
+                              {record.type === 'entry' ? 'Entrada' : 'Salida'}
+                            </span>
+                            {record.latitude && record.longitude && (
+                              <div className="flex items-center gap-1.5">
+                                <a 
+                                  href={`https://www.google.com/maps/search/?api=1&query=${record.latitude},${record.longitude}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800/40 transition-colors"
+                                  title="Ver ubicación"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                </a>
+                                {record.location_name && (
+                                  <span className="text-xs text-gray-500 max-w-[100px] truncate" title={record.location_name}>
+                                    {record.location_name}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))

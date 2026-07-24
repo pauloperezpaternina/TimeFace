@@ -30,7 +30,10 @@ CREATE TABLE IF NOT EXISTS attendance_records (
     collaborator_name TEXT NOT NULL,
     timestamp TEXT NOT NULL,
     type TEXT NOT NULL CHECK(type IN ('entry', 'exit')),
-    captured_photo_url TEXT
+    captured_photo_url TEXT,
+    latitude REAL,
+    longitude REAL,
+    location_name TEXT
 );
 
 -- Tabla de turnos

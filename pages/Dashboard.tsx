@@ -30,6 +30,37 @@ const getLocalDateString = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+const getLocation = async (): Promise<{ latitude: number, longitude: number, name?: string } | null> => {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        let name = undefined;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+          if (res.ok) {
+            const data = await res.json();
+            name = data.address?.road || data.address?.suburb || data.address?.city || data.address?.town || data.address?.village || data.display_name?.split(',')[0];
+          }
+        } catch (e) {
+          console.warn('Reverse geocoding failed', e);
+        }
+        resolve({ latitude: lat, longitude: lon, name });
+      },
+      (error) => {
+        console.warn('Geolocation error:', error);
+        resolve(null);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  });
+};
+
 const Dashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<RecognitionResult>({ status: 'none', message: '' });
@@ -40,6 +71,22 @@ const Dashboard: React.FC = () => {
   const [cameraActive, setCameraActive] = useState<ActionType | null>(null);
   const [cameraKey, setCameraKey] = useState(0);
   const [collaboratorHistory, setCollaboratorHistory] = useState<{name: string, records: AttendanceRecord[]} | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number, longitude: number, name?: string } | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchLocation = async () => {
+      setIsLoadingLocation(true);
+      const loc = await getLocation();
+      if (mounted) {
+        setCurrentLocation(loc);
+        setIsLoadingLocation(false);
+      }
+    };
+    fetchLocation();
+    return () => { mounted = false; };
+  }, []);
 
   const fetchDailyRecords = useCallback(async (date: string) => {
     try {
@@ -133,11 +180,24 @@ const Dashboard: React.FC = () => {
         }
       }
 
+      // Use pre-fetched location if available
+      let finalLocation = currentLocation;
+      if (!finalLocation) {
+        try {
+          finalLocation = await getLocation();
+        } catch (e) {
+          console.warn('Could not get location', e);
+        }
+      }
+
       const newRecord = await dbService.addAttendanceRecord({
         collaborator_id: matchFound.id,
         collaborator_name: matchFound.name,
         timestamp: new Date().toISOString(),
         type: selectedAction,
+        latitude: finalLocation?.latitude,
+        longitude: finalLocation?.longitude,
+        location_name: finalLocation?.name,
       }, imageBase64);
 
       const newStatus = selectedAction === 'entry' ? 'present' : schedule.status;
@@ -241,9 +301,16 @@ const Dashboard: React.FC = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
                   </div>
-                  <div className="text-center space-y-2">
+                  <div className="text-center space-y-2 mb-2">
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Selecciona una acción</h3>
                     <p className="text-gray-500 dark:text-gray-400">La cámara se activará para identificar tu rostro</p>
+                  </div>
+                  
+                  <div className="w-full max-w-xs flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded-xl border border-blue-100 dark:border-blue-800/30 text-sm mb-4">
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    <span className="truncate font-medium">
+                      {isLoadingLocation ? 'Obteniendo ubicación...' : currentLocation?.name ? currentLocation.name : currentLocation ? 'Ubicación obtenida' : 'Ubicación no disponible'}
+                    </span>
                   </div>
                 </>
               )}
@@ -327,9 +394,32 @@ const Dashboard: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <span className={`px-3 py-1.5 text-xs font-semibold rounded-full ${record.type === 'entry' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'}`}>
-                    {record.type === 'entry' ? 'Entrada' : 'Salida'}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    {record.latitude && record.longitude && (
+                      <div className="flex items-center gap-2">
+                        <a 
+                          href={`https://www.google.com/maps/search/?api=1&query=${record.latitude},${record.longitude}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="p-2 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800/40 transition-colors"
+                          title="Ver ubicación"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </a>
+                        {record.location_name && (
+                          <span className="text-xs text-gray-500 max-w-[120px] truncate" title={record.location_name}>
+                            {record.location_name}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <span className={`px-3 py-1.5 text-xs font-semibold rounded-full ${record.type === 'entry' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'}`}>
+                      {record.type === 'entry' ? 'Entrada' : 'Salida'}
+                    </span>
+                  </div>
                 </div>
               ))
             ) : (
