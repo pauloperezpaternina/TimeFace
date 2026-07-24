@@ -382,7 +382,7 @@ const Scheduling: React.FC = () => {
                 <button onClick={handleNextWeek} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-300 transition">Siguiente {'>'}</button>
             </div>
 
-            <div className="bg-white bg-gray-800 shadow-lg rounded-xl border border-gray-200 dark:border-gray-700 overflow-x-auto min-h-[75vh]">
+            <div className="bg-yellow-50 dark:bg-gray-800 shadow-lg rounded-xl border border-gray-200 dark:border-gray-700 overflow-x-auto min-h-[75vh]">
                 <div className="inline-block min-w-full align-middle">
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-30 shadow-md">
@@ -411,11 +411,11 @@ const Scheduling: React.FC = () => {
                                 })}
                             </tr>
                         </thead>
-                        <tbody className="bg-white bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        <tbody className="bg-yellow-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             {collaborators.map(collaborator => (
                                 <tr key={collaborator.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
                                     {/* Checkbox Column Row */}
-                                    <td className="px-4 py-4 w-10 text-center sticky left-0 bg-white dark:bg-gray-800 z-20 border-r border-gray-100 dark:border-gray-700">
+                                    <td className="px-4 py-4 w-10 text-center sticky left-0 bg-yellow-50 dark:bg-gray-800 z-20 border-r border-gray-100 dark:border-gray-700">
                                         <input
                                             type="checkbox"
                                             checked={selectedIds.includes(collaborator.id)}
@@ -424,7 +424,7 @@ const Scheduling: React.FC = () => {
                                         />
                                     </td>
 
-                                    <td className="px-6 py-1 whitespace-nowrap font-medium text-gray-900 dark:text-white sticky left-10 bg-white dark:bg-gray-800 z-10 border-r border-gray-100 dark:border-gray-700 flex items-center justify-between group h-12">
+                                    <td className="px-6 py-1 whitespace-nowrap font-medium text-gray-900 dark:text-white sticky left-10 bg-yellow-50 dark:bg-gray-800 z-10 border-r border-gray-100 dark:border-gray-700 flex items-center justify-between group h-12">
                                         <div className="flex items-center">
                                             {/* Optional: Add avatar here if desired */}
                                             <span>{collaborator.name}</span>

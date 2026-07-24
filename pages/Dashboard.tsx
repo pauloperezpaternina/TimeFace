@@ -30,6 +30,21 @@ const getLocalDateString = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+// Fórmula Haversine para calcular distancia en metros
+function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371e3; 
+  const p1 = lat1 * Math.PI/180;
+  const p2 = lat2 * Math.PI/180;
+  const dp = (lat2-lat1) * Math.PI/180;
+  const dl = (lon2-lon1) * Math.PI/180;
+
+  const a = Math.sin(dp/2) * Math.sin(dp/2) +
+            Math.cos(p1) * Math.cos(p2) *
+            Math.sin(dl/2) * Math.sin(dl/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
 const getLocation = async (): Promise<{ latitude: number, longitude: number, name?: string } | null> => {
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
@@ -45,7 +60,63 @@ const getLocation = async (): Promise<{ latitude: number, longitude: number, nam
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
           if (res.ok) {
             const data = await res.json();
-            name = data.address?.road || data.address?.suburb || data.address?.city || data.address?.town || data.address?.village || data.display_name?.split(',')[0];
+            
+            // 1. Revisar si estamos en una empresa registrada manualmente en la base de datos
+            let knownCompany = null;
+            try {
+               const knownLocations = await dbService.getKnownLocations();
+               for (const loc of knownLocations) {
+                  const dist = getDistance(lat, lon, loc.lat, loc.lon);
+                  if (dist <= loc.radius) {
+                     knownCompany = loc.name;
+                     break;
+                  }
+               }
+            } catch (e) {
+               console.warn('Error fetching known locations', e);
+            }
+
+            let poiName = knownCompany || data.name || data.address?.amenity || data.address?.office || data.address?.shop || data.address?.building;
+            const roadName = data.address?.road || data.address?.suburb || data.address?.city || '';
+            const houseNumber = data.address?.house_number || '';
+            const fullRoad = houseNumber && roadName ? `${roadName} ${houseNumber}` : roadName;
+
+            // Si no obtuvimos un POI o el POI es igual a la calle, buscamos en el perímetro (40m)
+            if (!poiName || poiName === roadName || poiName === fullRoad) {
+              try {
+                const overpassQuery = `[out:json];nwr(around:40,${lat},${lon})["name"]["highway"!~"."];out center;`;
+                const opRes = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`);
+                if (opRes.ok) {
+                  const opData = await opRes.json();
+                  if (opData.elements && opData.elements.length > 0) {
+                    let closest = opData.elements[0];
+                    let minD = Infinity;
+                    for (const el of opData.elements) {
+                      const elLat = el.lat || el.center?.lat;
+                      const elLon = el.lon || el.center?.lon;
+                      if (elLat && elLon) {
+                        const d = Math.pow(elLat - lat, 2) + Math.pow(elLon - lon, 2);
+                        if (d < minD) {
+                          minD = d;
+                          closest = el;
+                        }
+                      }
+                    }
+                    if (closest && closest.tags && closest.tags.name) {
+                      poiName = closest.tags.name;
+                    }
+                  }
+                }
+              } catch (e) {
+                console.warn('Overpass API failed', e);
+              }
+            }
+            
+            if (poiName && fullRoad && poiName !== roadName && poiName !== fullRoad) {
+              name = `${poiName} - ${fullRoad}`;
+            } else {
+              name = poiName || fullRoad || data.display_name?.split(',')[0];
+            }
           }
         } catch (e) {
           console.warn('Reverse geocoding failed', e);
@@ -243,15 +314,15 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto space-y-6">
-      <div className="text-center mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Control de Asistencia</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">{currentTime.toLocaleString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+    <div className="container mx-auto space-y-4 md:space-y-6">
+      <div className="text-center mb-4">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Control de Asistencia</h1>
+        <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 mt-1">{currentTime.toLocaleString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col min-h-[400px]">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col min-h-[300px] md:min-h-[400px]">
           {isLoading ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8">
               <Spinner size="12" />
@@ -265,10 +336,12 @@ const Dashboard: React.FC = () => {
                     {cameraActive === 'entry' ? 'Registrando Entrada' : 'Registrando Salida'}
                   </div>
                 </div>
-                <CameraCapture key={cameraKey} onCapture={handleCapture} width={640} height={480} />
+                <div className="flex justify-center w-full">
+                  <CameraCapture key={cameraKey} onCapture={handleCapture} width={480} height={360} />
+                </div>
               </div>
               <div className="flex justify-center px-4 pb-4 pt-2">
-                <button onClick={resetCamera} className="px-8 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-[0.98] transition-all">
+                <button onClick={resetCamera} className="px-6 py-2.5 md:px-8 md:py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-[0.98] transition-all">
                   Cancelar
                 </button>
               </div>
@@ -296,32 +369,48 @@ const Dashboard: React.FC = () => {
 
               {result.status === 'none' && (
                 <>
-                  <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                    <svg className="w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                    <svg className="w-8 h-8 md:w-10 md:h-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
                   </div>
-                  <div className="text-center space-y-2 mb-2">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Selecciona una acción</h3>
-                    <p className="text-gray-500 dark:text-gray-400">La cámara se activará para identificar tu rostro</p>
+                  <div className="text-center space-y-1 md:space-y-2 mb-1 md:mb-2">
+                    <h3 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Selecciona una acción</h3>
+                    <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">La cámara se activará para identificar tu rostro</p>
                   </div>
                   
-                  <div className="w-full max-w-xs flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded-xl border border-blue-100 dark:border-blue-800/30 text-sm mb-4">
-                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                    <span className="truncate font-medium">
-                      {isLoadingLocation ? 'Obteniendo ubicación...' : currentLocation?.name ? currentLocation.name : currentLocation ? 'Ubicación obtenida' : 'Ubicación no disponible'}
-                    </span>
-                  </div>
+                  {currentLocation && !isLoadingLocation ? (
+                    <a 
+                      href={`https://www.google.com/maps/search/?api=1&query=${currentLocation.latitude},${currentLocation.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full max-w-xs flex items-center gap-2 p-3 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-xl border border-blue-100 dark:border-blue-800/30 text-sm mb-4 cursor-pointer transition-colors"
+                      title="Abrir en Google Maps"
+                    >
+                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      <span className="truncate font-medium flex-1 text-left">
+                        {currentLocation.name || 'Ubicación obtenida'}
+                      </span>
+                      <svg className="w-4 h-4 flex-shrink-0 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    </a>
+                  ) : (
+                    <div className="w-full max-w-xs flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded-xl border border-blue-100 dark:border-blue-800/30 text-sm mb-4">
+                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      <span className="truncate font-medium">
+                        {isLoadingLocation ? 'Obteniendo ubicación...' : 'Ubicación no disponible'}
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
 
-              <div className="w-full max-w-xs space-y-3">
-                <button onClick={() => handleActionSelect('entry')} className="w-full flex items-center justify-center gap-4 px-6 py-5 rounded-xl font-semibold text-lg border-2 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/50 active:scale-[0.98] transition-all duration-200">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <div className="w-full max-w-xs space-y-2 md:space-y-3">
+                <button onClick={() => handleActionSelect('entry')} className="w-full flex items-center justify-center gap-3 px-6 py-3.5 md:py-4 rounded-xl font-semibold text-base md:text-lg border-2 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/50 active:scale-[0.98] transition-all duration-200">
+                  <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   Marcar Entrada
                 </button>
-                <button onClick={() => handleActionSelect('exit')} className="w-full flex items-center justify-center gap-4 px-6 py-5 rounded-xl font-semibold text-lg border-2 border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/50 active:scale-[0.98] transition-all duration-200">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                <button onClick={() => handleActionSelect('exit')} className="w-full flex items-center justify-center gap-3 px-6 py-3.5 md:py-4 rounded-xl font-semibold text-base md:text-lg border-2 border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/50 active:scale-[0.98] transition-all duration-200">
+                  <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                   Marcar Salida
                 </button>
               </div>
@@ -377,17 +466,17 @@ const Dashboard: React.FC = () => {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto max-h-[500px] p-4 space-y-2">
+          <div className="flex-1 overflow-y-auto max-h-[350px] md:max-h-[450px] p-3 md:p-4 space-y-2">
             {(collaboratorHistory ? collaboratorHistory.records : dailyRecords).length > 0 ? (
               (collaboratorHistory ? collaboratorHistory.records : dailyRecords).map(record => (
-                <div key={record.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                  <div className="flex items-center gap-4">
+                <div key={record.id} className="flex items-center justify-between p-3 md:p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  <div className="flex items-center gap-3 md:gap-4">
                     {record.captured_photo_url && (
-                      <img src={record.captured_photo_url} alt="" className="h-12 w-12 rounded-full object-cover border border-gray-200 dark:border-gray-600" />
+                      <img src={record.captured_photo_url} alt="" className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover border border-gray-200 dark:border-gray-600" />
                     )}
                     <div>
-                      <p className="font-semibold text-gray-900 dark:text-white">{record.collaborator_name}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <p className="font-semibold text-sm md:text-base text-gray-900 dark:text-white">{record.collaborator_name}</p>
+                      <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">
                         {collaboratorHistory 
                           ? new Date(record.timestamp).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) 
                           : new Date(record.timestamp).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}

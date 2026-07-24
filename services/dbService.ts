@@ -1,5 +1,5 @@
 import { turso } from './tursoClient';
-import { User, Collaborator, AttendanceRecord, Role, Shift, Schedule, ShiftPattern, Visit } from '../types';
+import { User, Collaborator, AttendanceRecord, Role, Shift, Schedule, ShiftPattern, Visit, KnownLocation } from '../types';
 
 function rowToObj<T>(columns: readonly string[], row: unknown): T {
   const r = row as unknown[];
@@ -440,6 +440,33 @@ class DbService {
         })
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }
+  }
+
+  // --- Known Locations (Geocercas) ---
+  async getKnownLocations(): Promise<KnownLocation[]> {
+    const rs = await turso.execute('SELECT * FROM known_locations');
+    return rowsToArr<KnownLocation>(rs.columns, rs.rows);
+  }
+
+  async addKnownLocation(location: Omit<KnownLocation, 'id'>): Promise<KnownLocation> {
+    const id = generateId();
+    await turso.execute({
+      sql: 'INSERT INTO known_locations (id, name, lat, lon, radius) VALUES (?, ?, ?, ?, ?)',
+      args: [id, location.name, location.lat, location.lon, location.radius],
+    });
+    return { id, ...location };
+  }
+
+  async updateKnownLocation(location: KnownLocation): Promise<KnownLocation> {
+    await turso.execute({
+      sql: 'UPDATE known_locations SET name = ?, lat = ?, lon = ?, radius = ? WHERE id = ?',
+      args: [location.name, location.lat, location.lon, location.radius, location.id],
+    });
+    return location;
+  }
+
+  async deleteKnownLocation(locationId: string): Promise<void> {
+    await turso.execute({ sql: 'DELETE FROM known_locations WHERE id = ?', args: [locationId] });
   }
 }
 

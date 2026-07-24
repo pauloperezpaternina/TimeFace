@@ -74,3 +74,12 @@ CREATE TABLE IF NOT EXISTS visits (
 -- Insertar usuario admin por defecto (password: admin123)
 INSERT OR IGNORE INTO users (id, name, email, password, role)
 VALUES ('admin', 'Administrador', 'admin@timeface.com', 'admin123', 'admin');
+
+-- Tabla de ubicaciones conocidas (Geocercas)
+CREATE TABLE IF NOT EXISTS known_locations (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    lat REAL NOT NULL,
+    lon REAL NOT NULL,
+    radius REAL NOT NULL DEFAULT 100
+);

@@ -64,3 +64,11 @@ export interface Visit {
   signature_url: string;
   timestamp: string;
 }
+
+export interface KnownLocation {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  radius: number;
+}

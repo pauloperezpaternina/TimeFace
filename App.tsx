@@ -7,9 +7,10 @@ import Reports from './pages/Reports';
 import Scheduling from './pages/Scheduling';
 import Login from './pages/Login';
 import VisitorRegistration from './pages/VisitorRegistration';
+import Locations from './pages/Locations';
 import { User } from './types';
 
-export type Page = 'dashboard' | 'scheduling' | 'collaborators' | 'admin' | 'reports' | 'login' | 'visitor-registration';
+export type Page = 'dashboard' | 'scheduling' | 'collaborators' | 'admin' | 'reports' | 'login' | 'visitor-registration' | 'locations';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
@@ -26,7 +27,7 @@ const App: React.FC = () => {
     setCurrentPage('dashboard');
   };
 
-  const protectedPages: Page[] = ['scheduling', 'collaborators', 'admin', 'reports'];
+  const protectedPages: Page[] = ['scheduling', 'collaborators', 'admin', 'reports', 'locations'];
   const isProtectedPage = protectedPages.includes(currentPage);
 
   const renderContent = () => {
@@ -46,6 +47,8 @@ const App: React.FC = () => {
         return <Collaborators />;
       case 'admin':
         return <Admin />;
+      case 'locations':
+        return <Locations />;
       case 'reports':
         return <Reports />;
       // If user is already logged in and tries to go to 'login', redirect to dashboard.
