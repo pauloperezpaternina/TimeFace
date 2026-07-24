@@ -1,491 +1,454 @@
-
-import { supabase } from './supabaseClient';
+import { turso } from './tursoClient';
 import { User, Collaborator, AttendanceRecord, Role, Shift, Schedule, ShiftPattern, Visit } from '../types';
 
-// Helper para convertir Base64 a un Blob para subirlo a Supabase Storage
-const base64ToBlob = (base64: string, contentType = 'image/jpeg', sliceSize = 512): Blob => {
-    const byteCharacters = atob(base64.split(',')[1]);
-    const byteArrays = [];
-    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-        const slice = byteCharacters.slice(offset, offset + sliceSize);
-        const byteNumbers = new Array(slice.length);
-        for (let i = 0; i < slice.length; i++) {
-            byteNumbers[i] = slice.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        byteArrays.push(byteArray);
-    }
-    return new Blob(byteArrays, { type: contentType });
-};
-
-// --- Gestión de fotos de Colaboradores ---
-async function uploadCollaboratorPhoto(collaboratorId: string | null, photoBase64: string): Promise<string> {
-    const blob = base64ToBlob(photoBase64);
-    // Usa una ruta única para cada foto para evitar sobreescrituras.
-    const fileName = `public/${collaboratorId || 'new'}_${Date.now()}.jpg`;
-    const { data, error } = await supabase.storage
-        .from('collaborator-photos') // Nombre del Bucket en Supabase
-        .upload(fileName, blob, {
-            cacheControl: '3600',
-            upsert: false,
-        });
-
-    if (error) {
-        console.error('Error al subir la foto:', error);
-        throw new Error('No se pudo subir la foto del colaborador.');
-    }
-
-    const { data: { publicUrl } } = supabase.storage.from('collaborator-photos').getPublicUrl(data.path);
-    return publicUrl;
+function rowToObj<T>(columns: readonly string[], row: unknown): T {
+  const r = row as unknown[];
+  const obj: Record<string, unknown> = {};
+  columns.forEach((col, i) => { obj[col] = r[i] });
+  return obj as T;
 }
 
-// --- Gestión de fotos de Asistencia ---
-async function uploadAttendancePhoto(collaboratorId: string, photoBase64: string): Promise<string> {
-    const blob = base64ToBlob(photoBase64);
-    // Usa una ruta única para cada foto.
-    const fileName = `public/${collaboratorId}_${Date.now()}.jpg`;
-    const { data, error } = await supabase.storage
-        .from('attendance-photos') // Nuevo Bucket para fotos de asistencia
-        .upload(fileName, blob, {
-            cacheControl: '3600',
-            upsert: false,
-        });
-
-    if (error) {
-        console.error('Error al subir la foto de asistencia:', error);
-        if (error.message.includes('Bucket not found')) {
-            throw new Error("Error de configuración: El bucket 'attendance-photos' no se encontró. Por favor, créelo en Supabase Storage y asegúrese de que sea público.");
-        }
-        throw new Error('No se pudo subir la foto de asistencia.');
-    }
-
-    const { data: { publicUrl } } = supabase.storage.from('attendance-photos').getPublicUrl(data.path);
-    return publicUrl;
+function rowsToArr<T>(columns: readonly string[], rows: unknown): T[] {
+  const r = rows as unknown[][];
+  return r.map(row => rowToObj<T>(columns, row));
 }
 
-// --- Gestión de firmas de Visitantes ---
-async function uploadVisitorSignature(visitorId: string, signatureBase64: string): Promise<string> {
-    try {
-        const blob = base64ToBlob(signatureBase64, 'image/png');
-        const fileName = `signatures/${visitorId}_${Date.now()}.png`;
-        const { data, error } = await supabase.storage
-            .from('visitor-signatures')
-            .upload(fileName, blob, {
-                cacheControl: '3600',
-                upsert: false,
-            });
-
-        if (error) {
-            // Si falla el bucket, retornamos el base64 original para simular éxito en modo offline/mock
-            console.warn('Bucket visitor-signatures no encontrado o error de subida, usando base64 local.', error);
-            return signatureBase64;
-        }
-
-        const { data: { publicUrl } } = supabase.storage.from('visitor-signatures').getPublicUrl(data.path);
-        return publicUrl;
-    } catch (e) {
-        console.warn('Excepción al subir firma, usando base64 local.', e);
-        return signatureBase64;
-    }
+function generateId(): string {
+  return crypto.randomUUID();
 }
-
-
-// Handler genérico para las peticiones a Supabase
-async function supabaseRequest<T>(query: any): Promise<T> {
-    const { data, error } = await query;
-    if (error) {
-        console.error('Error de Supabase:', error);
-        if (error.message.includes('Failed to fetch')) {
-            throw new Error('Error de red: No se pudo conectar con el servidor. Verifique su conexión a internet y asegúrese de que el dominio de esta aplicación esté permitido en la configuración de CORS de Supabase.');
-        }
-        throw new Error(`Error de Supabase: ${error.message} (Detalles: ${error.details})`);
-    }
-    return data as T;
-}
-
-// Store fake visits in localStorage to persist across refreshes
-const MOCK_VISITS_KEY = 'timeface_mock_visits';
-const getMockVisits = (): Visit[] => {
-    try {
-        const stored = localStorage.getItem(MOCK_VISITS_KEY);
-        return stored ? JSON.parse(stored) : [];
-    } catch (e) {
-        return [];
-    }
-};
-const saveMockVisit = (visit: Visit) => {
-    try {
-        const visits = getMockVisits();
-        visits.push(visit);
-        localStorage.setItem(MOCK_VISITS_KEY, JSON.stringify(visits));
-    } catch (e) {
-        console.warn("Failed to save mock visit to localStorage", e);
-    }
-};
-
 
 class DbService {
-    async login(email: string, password: string): Promise<{ user: User | null }> {
-        // Llama a la función RPC segura en la base de datos para verificar las credenciales.
-        const { data, error } = await supabase.rpc('verify_user_password', {
-            user_email: email,
-            user_password: password
+  async login(email: string, password: string): Promise<{ user: User | null }> {
+    const rs = await turso.execute({
+      sql: 'SELECT * FROM users WHERE email = ? AND password = ?',
+      args: [email, password],
+    });
+    if (rs.rows.length === 0) return { user: null };
+    const user = rowToObj<User>(rs.columns, rs.rows[0] );
+    return { user };
+  }
+
+  // --- Users ---
+  async getUsers(): Promise<User[]> {
+    const rs = await turso.execute('SELECT * FROM users');
+    return rowsToArr<User>(rs.columns, rs.rows);
+  }
+
+  async addUser(user: Omit<User, 'id'>): Promise<User> {
+    const id = generateId();
+    await turso.execute({
+      sql: 'INSERT INTO users (id, name, email, role, password) VALUES (?, ?, ?, ?, ?)',
+      args: [id, user.name, user.email, user.role, ''],
+    });
+    return { id, ...user };
+  }
+
+  async updateUser(user: User): Promise<User> {
+    await turso.execute({
+      sql: 'UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?',
+      args: [user.name, user.email, user.role, user.id],
+    });
+    return user;
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    await turso.execute({ sql: 'DELETE FROM users WHERE id = ?', args: [userId] });
+  }
+
+  // --- Collaborators ---
+  async getCollaborators(): Promise<Collaborator[]> {
+    const rs = await turso.execute('SELECT * FROM collaborators');
+    return rowsToArr<Collaborator>(rs.columns, rs.rows);
+  }
+
+  async addCollaborator(collaborator: Omit<Collaborator, 'id'>): Promise<Collaborator> {
+    const id = generateId();
+    await turso.execute({
+      sql: 'INSERT INTO collaborators (id, name, position, photo, role_id) VALUES (?, ?, ?, ?, ?)',
+      args: [id, collaborator.name, collaborator.position, collaborator.photo, collaborator.role_id || null],
+    });
+    return { id, ...collaborator };
+  }
+
+  async updateCollaborator(collaborator: Collaborator): Promise<Collaborator> {
+    await turso.execute({
+      sql: 'UPDATE collaborators SET name = ?, position = ?, photo = ?, role_id = ? WHERE id = ?',
+      args: [collaborator.name, collaborator.position, collaborator.photo, collaborator.role_id || null, collaborator.id],
+    });
+    return collaborator;
+  }
+
+  async deleteCollaborator(collaboratorId: string): Promise<void> {
+    await turso.execute({ sql: 'DELETE FROM collaborators WHERE id = ?', args: [collaboratorId] });
+  }
+
+  // --- Roles ---
+  async getRoles(): Promise<Role[]> {
+    const rs = await turso.execute('SELECT * FROM roles');
+    return rowsToArr<Role>(rs.columns, rs.rows);
+  }
+
+  async addRole(role: Omit<Role, 'id'>): Promise<Role> {
+    const id = generateId();
+    await turso.execute({
+      sql: 'INSERT INTO roles (id, name) VALUES (?, ?)',
+      args: [id, role.name],
+    });
+    return { id, ...role };
+  }
+
+  async updateRole(role: Role): Promise<Role> {
+    await turso.execute({
+      sql: 'UPDATE roles SET name = ? WHERE id = ?',
+      args: [role.name, role.id],
+    });
+    return role;
+  }
+
+  async deleteRole(roleId: string): Promise<void> {
+    await turso.execute({ sql: 'DELETE FROM roles WHERE id = ?', args: [roleId] });
+  }
+
+  // --- Attendance ---
+  async getAttendanceRecords(): Promise<AttendanceRecord[]> {
+    const rs = await turso.execute('SELECT * FROM attendance_records');
+    return rowsToArr<AttendanceRecord>(rs.columns, rs.rows);
+  }
+
+  async getAttendanceRecordsByDate(date: string): Promise<AttendanceRecord[]> {
+    const startDate = new Date(`${date}T00:00:00`).toISOString();
+    const endDate = new Date(`${date}T23:59:59.999`).toISOString();
+    const rs = await turso.execute({
+      sql: 'SELECT * FROM attendance_records WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC',
+      args: [startDate, endDate],
+    });
+    return rowsToArr<AttendanceRecord>(rs.columns, rs.rows);
+  }
+
+  async addAttendanceRecord(record: Omit<AttendanceRecord, 'id' | 'captured_photo_url'>, photoBase64?: string | null): Promise<AttendanceRecord> {
+    const id = generateId();
+    const newRecord = { ...record, id, captured_photo_url: photoBase64 || undefined };
+    await turso.execute({
+      sql: 'INSERT INTO attendance_records (id, collaborator_id, collaborator_name, timestamp, type, captured_photo_url) VALUES (?, ?, ?, ?, ?, ?)',
+      args: [id, record.collaborator_id, record.collaborator_name, record.timestamp, record.type, photoBase64 || null],
+    });
+    return newRecord as AttendanceRecord;
+  }
+
+  async getLastRecordForCollaborator(collaboratorId: string): Promise<AttendanceRecord | null> {
+    const rs = await turso.execute({
+      sql: 'SELECT * FROM attendance_records WHERE collaborator_id = ? ORDER BY timestamp DESC LIMIT 1',
+      args: [collaboratorId],
+    });
+    if (rs.rows.length === 0) return null;
+    return rowToObj<AttendanceRecord>(rs.columns, rs.rows[0] );
+  }
+
+  // --- Shifts ---
+  async getShifts(): Promise<Shift[]> {
+    const rs = await turso.execute('SELECT * FROM shifts');
+    return rowsToArr<Shift>(rs.columns, rs.rows);
+  }
+
+  async addShift(shift: Omit<Shift, 'id'>): Promise<Shift> {
+    const id = generateId();
+    await turso.execute({
+      sql: 'INSERT INTO shifts (id, name, start_time, end_time, color) VALUES (?, ?, ?, ?, ?)',
+      args: [id, shift.name, shift.start_time, shift.end_time, shift.color],
+    });
+    return { id, ...shift };
+  }
+
+  async updateShift(shift: Shift): Promise<Shift> {
+    await turso.execute({
+      sql: 'UPDATE shifts SET name = ?, start_time = ?, end_time = ?, color = ? WHERE id = ?',
+      args: [shift.name, shift.start_time, shift.end_time, shift.color, shift.id],
+    });
+    return shift;
+  }
+
+  async deleteShift(shiftId: string): Promise<void> {
+    await turso.execute({ sql: 'DELETE FROM shifts WHERE id = ?', args: [shiftId] });
+  }
+
+  // --- Schedules ---
+  async getSchedules(startDate: string, endDate: string): Promise<Schedule[]> {
+    const rs = await turso.execute({
+      sql: 'SELECT * FROM schedules WHERE date >= ? AND date <= ?',
+      args: [startDate, endDate],
+    });
+    return rowsToArr<Schedule>(rs.columns, rs.rows);
+  }
+
+  async getScheduleForCollaboratorOnDate(collaboratorId: string, date: string): Promise<Schedule | null> {
+    const rs = await turso.execute({
+      sql: 'SELECT * FROM schedules WHERE collaborator_id = ? AND date = ?',
+      args: [collaboratorId, date],
+    });
+    if (rs.rows.length === 0) return null;
+    return rowToObj<Schedule>(rs.columns, rs.rows[0] );
+  }
+
+  async addSchedule(schedule: Omit<Schedule, 'id' | 'status'>): Promise<Schedule> {
+    const id = generateId();
+    await turso.execute({
+      sql: 'INSERT INTO schedules (id, collaborator_id, shift_id, date, status) VALUES (?, ?, ?, ?, ?)',
+      args: [id, schedule.collaborator_id, schedule.shift_id, schedule.date, 'scheduled'],
+    });
+    return { id, ...schedule, status: 'scheduled' };
+  }
+
+  async updateSchedule(schedule: Schedule): Promise<Schedule> {
+    await turso.execute({
+      sql: 'UPDATE schedules SET collaborator_id = ?, shift_id = ?, date = ?, status = ? WHERE id = ?',
+      args: [schedule.collaborator_id, schedule.shift_id, schedule.date, schedule.status, schedule.id],
+    });
+    return schedule;
+  }
+
+  async deleteSchedule(scheduleId: string): Promise<void> {
+    await turso.execute({ sql: 'DELETE FROM schedules WHERE id = ?', args: [scheduleId] });
+  }
+
+  async generateSchedules(patternId: string, startDate: string, endDate: string, collaboratorIds: string[]): Promise<void> {
+    const rs = await turso.execute({
+      sql: 'SELECT sequence FROM shift_patterns WHERE id = ?',
+      args: [patternId],
+    });
+    if (rs.rows.length === 0) throw new Error('Patrón de turno no encontrado.');
+    const row = rowToObj<{ sequence: string }>(rs.columns, rs.rows[0] );
+    const sequence: (string | null)[] = JSON.parse(row.sequence);
+    if (!sequence || sequence.length === 0) return;
+
+    const newSchedules: Omit<Schedule, 'id'>[] = [];
+    let currentDate = new Date(startDate);
+    const finalDate = new Date(endDate);
+    let dayCounter = 0;
+
+    while (currentDate <= finalDate) {
+      const shiftId = sequence[dayCounter % sequence.length];
+      if (shiftId) {
+        for (const collaboratorId of collaboratorIds) {
+          newSchedules.push({
+            collaborator_id: collaboratorId,
+            shift_id: shiftId,
+            date: currentDate.toISOString().split('T')[0],
+            status: 'scheduled',
+          });
+        }
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+      dayCounter++;
+    }
+
+    if (newSchedules.length > 0) {
+      await this.bulkCreateSchedules(newSchedules);
+    }
+  }
+
+  async copyScheduleFromPreviousWeek(targetStartDate: string, targetEndDate: string): Promise<void> {
+    const targetStart = new Date(targetStartDate);
+    const prevStart = new Date(targetStart);
+    prevStart.setDate(prevStart.getDate() - 7);
+    const prevEnd = new Date(prevStart);
+    prevEnd.setDate(prevEnd.getDate() + 6);
+
+    const prevStartStr = prevStart.toISOString().split('T')[0];
+    const prevEndStr = prevEnd.toISOString().split('T')[0];
+
+    const prevSchedules = await this.getSchedules(prevStartStr, prevEndStr);
+    if (prevSchedules.length === 0) throw new Error('No hay horarios en la semana anterior para copiar.');
+
+    const currentSchedules = await this.getSchedules(targetStartDate, targetEndDate);
+    const existingMap = new Set(currentSchedules.map(s => `${s.collaborator_id}-${s.date}`));
+
+    const newSchedules: Omit<Schedule, 'id'>[] = [];
+    prevSchedules.forEach(ps => {
+      const oldDate = new Date(ps.date);
+      const newDate = new Date(oldDate);
+      newDate.setDate(newDate.getDate() + 7);
+      const newDateStr = newDate.toISOString().split('T')[0];
+      if (!existingMap.has(`${ps.collaborator_id}-${newDateStr}`)) {
+        newSchedules.push({
+          collaborator_id: ps.collaborator_id,
+          shift_id: ps.shift_id,
+          date: newDateStr,
+          status: 'scheduled',
         });
+      }
+    });
 
-        if (error) {
-            console.error('Error durante la llamada RPC de inicio de sesión:', error);
-            // No revelar detalles del error al usuario final por seguridad.
-            throw new Error('Error de autenticación en el servidor.');
-        }
-
-        // La función RPC devuelve el objeto de usuario si es exitoso, o null si falla.
-        // El objeto devuelto ya está dentro de 'data', por lo que no necesitamos desestructurarlo más.
-        const user = data ? { ...data, id: String(data.id) } as User : null;
-        return { user };
+    if (newSchedules.length > 0) {
+      await this.bulkCreateSchedules(newSchedules);
     }
+  }
 
-    // --- Users ---
-    getUsers(): Promise<User[]> { return supabaseRequest<User[]>(supabase.from('users').select('*')); }
-    addUser(user: Omit<User, 'id'>): Promise<User> { return supabaseRequest<User>(supabase.from('users').insert(user).select().single()); }
-    updateUser(user: User): Promise<User> { return supabaseRequest<User>(supabase.from('users').update(user).eq('id', user.id).select().single()); }
-    deleteUser(userId: string): Promise<void> { return supabaseRequest<void>(supabase.from('users').delete().eq('id', userId)); }
-
-    // --- Collaborators ---
-    getCollaborators(): Promise<Collaborator[]> { return supabaseRequest<Collaborator[]>(supabase.from('collaborators').select('*')); }
-
-    async addCollaborator(collaborator: Omit<Collaborator, 'id'>): Promise<Collaborator> {
-        let photoUrl = collaborator.photo;
-        if (photoUrl.startsWith('data:image')) {
-            photoUrl = await uploadCollaboratorPhoto(null, photoUrl);
-        }
-        const newCollaborator = { ...collaborator, photo: photoUrl };
-        return supabaseRequest<Collaborator>(supabase.from('collaborators').insert(newCollaborator).select().single());
+  async bulkCreateSchedules(schedules: Omit<Schedule, 'id'>[]): Promise<void> {
+    if (schedules.length === 0) return;
+    const placeholders = schedules.map(() => '(?, ?, ?, ?, ?)').join(',');
+    const values: any[] = [];
+    for (const s of schedules) {
+      values.push(generateId(), s.collaborator_id, s.shift_id, s.date, s.status);
     }
+    await turso.execute({
+      sql: `INSERT INTO schedules (id, collaborator_id, shift_id, date, status) VALUES ${placeholders}`,
+      args: values,
+    });
+  }
 
-    async updateCollaborator(collaborator: Collaborator): Promise<Collaborator> {
-        let photoUrl = collaborator.photo;
-        if (photoUrl.startsWith('data:image')) {
-            photoUrl = await uploadCollaboratorPhoto(collaborator.id, photoUrl);
-        }
-        const updatedCollaborator = { ...collaborator, photo: photoUrl };
-        return supabaseRequest<Collaborator>(supabase.from('collaborators').update(updatedCollaborator).eq('id', collaborator.id).select().single());
+  // --- Shift Patterns ---
+  async getShiftPatterns(): Promise<ShiftPattern[]> {
+    const rs = await turso.execute('SELECT * FROM shift_patterns');
+    const patterns = rowsToArr<any>(rs.columns, rs.rows);
+    return patterns.map(p => ({ ...p, sequence: typeof p.sequence === 'string' ? JSON.parse(p.sequence) : p.sequence }));
+  }
+
+  async addShiftPattern(pattern: Omit<ShiftPattern, 'id'>): Promise<ShiftPattern> {
+    const id = generateId();
+    await turso.execute({
+      sql: 'INSERT INTO shift_patterns (id, name, sequence) VALUES (?, ?, ?)',
+      args: [id, pattern.name, JSON.stringify(pattern.sequence)],
+    });
+    return { id, ...pattern };
+  }
+
+  async updateShiftPattern(pattern: ShiftPattern): Promise<ShiftPattern> {
+    await turso.execute({
+      sql: 'UPDATE shift_patterns SET name = ?, sequence = ? WHERE id = ?',
+      args: [pattern.name, JSON.stringify(pattern.sequence), pattern.id],
+    });
+    return pattern;
+  }
+
+  async deleteShiftPattern(patternId: string): Promise<void> {
+    await turso.execute({ sql: 'DELETE FROM shift_patterns WHERE id = ?', args: [patternId] });
+  }
+
+  // --- Visits ---
+  async registerVisit(visit: Omit<Visit, 'id' | 'timestamp' | 'signature_url'>, signatureBase64: string): Promise<Visit> {
+    try {
+      const id = generateId();
+      const newVisit = {
+        ...visit,
+        id,
+        signature_url: signatureBase64,
+        timestamp: new Date().toISOString(),
+      };
+      await turso.execute({
+        sql: 'INSERT INTO visits (id, full_name, gov_id, company, signature_url, timestamp) VALUES (?, ?, ?, ?, ?, ?)',
+        args: [id, visit.full_name, visit.gov_id, visit.company, signatureBase64, newVisit.timestamp],
+      });
+      return newVisit;
+    } catch (error) {
+      console.warn('Error guardando visita en Turso, guardando en localStorage.', error);
+      const mockVisit: Visit = {
+        ...visit,
+        id: `fake-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        signature_url: signatureBase64,
+      };
+      saveMockVisit(mockVisit);
+      return mockVisit;
     }
+  }
 
-    deleteCollaborator(collaboratorId: string): Promise<void> { return supabaseRequest<void>(supabase.from('collaborators').delete().eq('id', collaboratorId)); }
-
-    // --- Roles ---
-    getRoles(): Promise<Role[]> { return supabaseRequest<Role[]>(supabase.from('roles').select('*')); }
-    addRole(role: Omit<Role, 'id'>): Promise<Role> { return supabaseRequest<Role>(supabase.from('roles').insert(role).select().single()); }
-    updateRole(role: Role): Promise<Role> { return supabaseRequest<Role>(supabase.from('roles').update(role).eq('id', role.id).select().single()); }
-    deleteRole(roleId: string): Promise<void> { return supabaseRequest<void>(supabase.from('roles').delete().eq('id', roleId)); }
-
-    // --- Attendance ---
-    getAttendanceRecords(): Promise<AttendanceRecord[]> { return supabaseRequest<AttendanceRecord[]>(supabase.from('attendance_records').select('*')); }
-
-    getAttendanceRecordsByDate(date: string): Promise<AttendanceRecord[]> {
-        // 'date' is a 'YYYY-MM-DD' string representing a date in the user's local timezone.
-        // We create Date objects for the start and end of that day in the local timezone.
-        const startDate = new Date(`${date}T00:00:00`);
-        const endDate = new Date(`${date}T23:59:59.999`);
-
-        // .toISOString() converts the local date objects to UTC strings, which is what Supabase expects
-        // for `timestamptz` columns. This correctly queries for the full local day.
-        return supabaseRequest<AttendanceRecord[]>(supabase
-            .from('attendance_records')
-            .select('*')
-            .gte('timestamp', startDate.toISOString())
-            .lte('timestamp', endDate.toISOString())
-            .order('timestamp', { ascending: false })
-        );
+  async searchVisitors(query: string): Promise<Visit[]> {
+    if (!query) return [];
+    try {
+      const rs = await turso.execute({
+        sql: "SELECT * FROM visits WHERE LOWER(full_name) LIKE ? OR LOWER(gov_id) LIKE ? ORDER BY timestamp DESC LIMIT 20",
+        args: [`%${query.toLowerCase()}%`, `%${query.toLowerCase()}%`],
+      });
+      const results = rowsToArr<Visit>(rs.columns, rs.rows);
+      const unique = new Map<string, Visit>();
+      results.forEach(v => { if (!unique.has(v.gov_id)) unique.set(v.gov_id, v); });
+      return Array.from(unique.values());
+    } catch (error) {
+      console.warn('Error buscando visitantes en DB, usando localStorage', error);
+      const lowerQuery = query.toLowerCase();
+      const mockVisits = getMockVisits();
+      const results = mockVisits.filter(v =>
+        v.full_name.toLowerCase().includes(lowerQuery) ||
+        v.gov_id.toLowerCase().includes(lowerQuery)
+      );
+      const unique = new Map<string, Visit>();
+      results.forEach(v => { if (!unique.has(v.gov_id)) unique.set(v.gov_id, v); });
+      return Array.from(unique.values());
     }
+  }
 
-    async addAttendanceRecord(record: Omit<AttendanceRecord, 'id' | 'captured_photo_url'>, photoBase64?: string | null): Promise<AttendanceRecord> {
-        let photoUrl: string | undefined = undefined;
-        if (photoBase64) {
-            photoUrl = await uploadAttendancePhoto(record.collaborator_id, photoBase64);
-        }
-        const newRecord = { ...record, captured_photo_url: photoUrl };
-        return supabaseRequest<AttendanceRecord>(supabase.from('attendance_records').insert(newRecord).select().single());
+  async getVisitsByDate(date: string): Promise<Visit[]> {
+    const startDate = new Date(`${date}T00:00:00`).toISOString();
+    const endDate = new Date(`${date}T23:59:59.999`).toISOString();
+    try {
+      const rs = await turso.execute({
+        sql: 'SELECT * FROM visits WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC',
+        args: [startDate, endDate],
+      });
+      return rowsToArr<Visit>(rs.columns, rs.rows);
+    } catch (error) {
+      console.warn('Error obteniendo visitas de DB, usando localStorage', error);
+      const start = new Date(`${date}T00:00:00`).getTime();
+      const end = new Date(`${date}T23:59:59.999`).getTime();
+      const mockVisits = getMockVisits();
+      return mockVisits
+        .filter(v => { const t = new Date(v.timestamp).getTime(); return t >= start && t <= end; })
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }
+  }
 
-    getLastRecordForCollaborator(collaboratorId: string): Promise<AttendanceRecord | null> {
-        return supabaseRequest<AttendanceRecord | null>(supabase
-            .from('attendance_records')
-            .select('*')
-            .eq('collaborator_id', collaboratorId)
-            .order('timestamp', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-        );
-    }
-
-    // --- Shifts ---
-    getShifts(): Promise<Shift[]> { return supabaseRequest<Shift[]>(supabase.from('shifts').select('*')); }
-    addShift(shift: Omit<Shift, 'id'>): Promise<Shift> { return supabaseRequest<Shift>(supabase.from('shifts').insert(shift).select().single()); }
-    updateShift(shift: Shift): Promise<Shift> { return supabaseRequest<Shift>(supabase.from('shifts').update(shift).eq('id', shift.id).select().single()); }
-    deleteShift(shiftId: string): Promise<void> { return supabaseRequest<void>(supabase.from('shifts').delete().eq('id', shiftId)); }
-
-    // --- Schedules ---
-    getSchedules(startDate: string, endDate: string): Promise<Schedule[]> {
-        return supabaseRequest<Schedule[]>(supabase
-            .from('schedules')
-            .select('*')
-            .gte('date', startDate)
-            .lte('date', endDate)
-        );
-    }
-    getScheduleForCollaboratorOnDate(collaboratorId: string, date: string): Promise<Schedule | null> {
-        return supabaseRequest<Schedule | null>(supabase
-            .from('schedules')
-            .select('*')
-            .eq('collaborator_id', collaboratorId)
-            .eq('date', date)
-            .maybeSingle()
-        );
-    }
-    addSchedule(schedule: Omit<Schedule, 'id' | 'status'>): Promise<Schedule> {
-        const newSchedule = { ...schedule, status: 'scheduled' as const };
-        return supabaseRequest<Schedule>(supabase.from('schedules').insert(newSchedule).select().single());
-    }
-    updateSchedule(schedule: Schedule): Promise<Schedule> { return supabaseRequest<Schedule>(supabase.from('schedules').update(schedule).eq('id', schedule.id).select().single()); }
-    deleteSchedule(scheduleId: string): Promise<void> { return supabaseRequest<void>(supabase.from('schedules').delete().eq('id', scheduleId)); }
-
-    async generateSchedules(patternId: string, startDate: string, endDate: string, collaboratorIds: string[]): Promise<void> {
-        const pattern = await supabaseRequest<ShiftPattern>(supabase.from('shift_patterns').select('sequence').eq('id', patternId).single());
-        if (!pattern) throw new Error("Patrón de turno no encontrado.");
-
-        const sequence = pattern.sequence;
-        if (!sequence || sequence.length === 0) return;
-
-        const newSchedules: Omit<Schedule, 'id'>[] = [];
-
-        let currentDate = new Date(new Date(startDate).valueOf() + new Date(startDate).getTimezoneOffset() * 60 * 1000);
-        const finalDate = new Date(new Date(endDate).valueOf() + new Date(endDate).getTimezoneOffset() * 60 * 1000);
-
-        let dayCounter = 0;
-        while (currentDate <= finalDate) {
-            const shiftId = sequence[dayCounter % sequence.length];
-
-            if (shiftId) { // Solo se programa si no es un día de descanso (null)
-                for (const collaboratorId of collaboratorIds) {
-                    newSchedules.push({
-                        collaborator_id: collaboratorId,
-                        shift_id: shiftId,
-                        date: currentDate.toISOString().split('T')[0],
-                        status: 'scheduled'
-                    });
-                }
-            }
-
-            currentDate.setDate(currentDate.getDate() + 1);
-            dayCounter++;
-        }
-
-        if (newSchedules.length > 0) {
-            await supabaseRequest<void>(supabase.from('schedules').insert(newSchedules));
-        }
-    }
-
-    async copyScheduleFromPreviousWeek(targetStartDate: string, targetEndDate: string): Promise<void> {
-        const targetStart = new Date(targetStartDate);
-        const prevStart = new Date(targetStart);
-        prevStart.setDate(prevStart.getDate() - 7);
-        const prevEnd = new Date(prevStart);
-        prevEnd.setDate(prevEnd.getDate() + 6);
-
-        const prevStartStr = prevStart.toISOString().split('T')[0];
-        const prevEndStr = prevEnd.toISOString().split('T')[0];
-
-        // Get previous week schedules
-        const prevSchedules = await this.getSchedules(prevStartStr, prevEndStr);
-        if (prevSchedules.length === 0) throw new Error("No hay horarios en la semana anterior para copiar.");
-
-        // Get existing target schedules to avoid duplicates (could also use upsert if constraint exists)
-        const currentSchedules = await this.getSchedules(targetStartDate, targetEndDate);
-        const existingMap = new Set(currentSchedules.map(s => `${s.collaborator_id}-${s.date}`));
-
-        const newSchedules: Omit<Schedule, 'id'>[] = [];
-
-        prevSchedules.forEach(ps => {
-            const oldDate = new Date(ps.date);
-            const newDate = new Date(oldDate);
-            newDate.setDate(newDate.getDate() + 7);
-            const newDateStr = newDate.toISOString().split('T')[0];
-
-            if (!existingMap.has(`${ps.collaborator_id}-${newDateStr}`)) {
-                newSchedules.push({
-                    collaborator_id: ps.collaborator_id,
-                    shift_id: ps.shift_id,
-                    date: newDateStr,
-                    status: 'scheduled'
-                });
-            }
+  async getVisitHistory(startDate: string, endDate: string, searchTerm: string = ''): Promise<Visit[]> {
+    const start = new Date(`${startDate}T00:00:00`).toISOString();
+    const end = new Date(`${endDate}T23:59:59.999`).toISOString();
+    try {
+      if (searchTerm) {
+        const rs = await turso.execute({
+          sql: "SELECT * FROM visits WHERE timestamp >= ? AND timestamp <= ? AND (LOWER(full_name) LIKE ? OR LOWER(gov_id) LIKE ? OR LOWER(company) LIKE ?) ORDER BY timestamp DESC",
+          args: [start, end, `%${searchTerm.toLowerCase()}%`, `%${searchTerm.toLowerCase()}%`, `%${searchTerm.toLowerCase()}%`],
         });
-
-        if (newSchedules.length > 0) {
-            await supabaseRequest<void>(supabase.from('schedules').insert(newSchedules));
-        }
+        return rowsToArr<Visit>(rs.columns, rs.rows);
+      } else {
+        const rs = await turso.execute({
+          sql: 'SELECT * FROM visits WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC',
+          args: [start, end],
+        });
+        return rowsToArr<Visit>(rs.columns, rs.rows);
+      }
+    } catch (error) {
+      console.warn('Error obteniendo historial de visitas de DB, usando localStorage', error);
+      const startMs = new Date(start).getTime();
+      const endMs = new Date(end).getTime();
+      const searchLower = searchTerm.toLowerCase();
+      const mockVisits = getMockVisits();
+      return mockVisits
+        .filter(v => {
+          const t = new Date(v.timestamp).getTime();
+          const matchesTime = t >= startMs && t <= endMs;
+          const matchesSearch = !searchTerm ||
+            v.full_name.toLowerCase().includes(searchLower) ||
+            v.gov_id.toLowerCase().includes(searchLower) ||
+            v.company.toLowerCase().includes(searchLower);
+          return matchesTime && matchesSearch;
+        })
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }
-
-    async bulkCreateSchedules(schedules: Omit<Schedule, 'id'>[]): Promise<void> {
-        if (schedules.length === 0) return;
-        await supabaseRequest<void>(supabase.from('schedules').insert(schedules));
-    }
-
-    // --- Shift Patterns ---
-    getShiftPatterns(): Promise<ShiftPattern[]> { return supabaseRequest<ShiftPattern[]>(supabase.from('shift_patterns').select('*')); }
-    addShiftPattern(pattern: Omit<ShiftPattern, 'id'>): Promise<ShiftPattern> { return supabaseRequest<ShiftPattern>(supabase.from('shift_patterns').insert(pattern).select().single()); }
-    updateShiftPattern(pattern: ShiftPattern): Promise<ShiftPattern> { return supabaseRequest<ShiftPattern>(supabase.from('shift_patterns').update(pattern).eq('id', pattern.id).select().single()); }
-    deleteShiftPattern(patternId: string): Promise<void> { return supabaseRequest<void>(supabase.from('shift_patterns').delete().eq('id', patternId)); }
-
-    // --- Visits (New) ---
-    async registerVisit(visit: Omit<Visit, 'id' | 'timestamp' | 'signature_url'>, signatureBase64: string): Promise<Visit> {
-        try {
-            const signatureUrl = await uploadVisitorSignature(visit.gov_id, signatureBase64);
-            const newVisit = {
-                ...visit,
-                signature_url: signatureUrl,
-                timestamp: new Date().toISOString()
-            };
-
-            // Intentar guardar en Supabase
-            const { data, error } = await supabase.from('visits').insert(newVisit).select().single();
-
-            if (error) {
-                throw error; // Lanzar error para capturarlo en el catch
-            }
-
-            return data as Visit;
-        } catch (error) {
-            console.warn("La tabla 'visits' no existe o hubo un error. Guardando en datos falsos locales (localStorage).", error);
-
-            // Mock implementation / Datos falsos
-            const mockVisit: Visit = {
-                ...visit,
-                id: `fake-${Date.now()}`,
-                timestamp: new Date().toISOString(),
-                signature_url: signatureBase64 // Guarda base64 localmente si falla subida
-            };
-            saveMockVisit(mockVisit);
-
-            // Retornamos el mock simulando éxito
-            return mockVisit;
-        }
-    }
-
-    async searchVisitors(query: string): Promise<Visit[]> {
-        if (!query) return [];
-
-        try {
-            // Try searching in Supabase
-            const { data, error } = await supabase
-                .from('visits')
-                .select('*')
-                .or(`full_name.ilike.%${query}%,gov_id.ilike.%${query}%`)
-                .order('timestamp', { ascending: false })
-                .limit(20);
-
-            if (error) throw error;
-
-            // Deduplicate results by gov_id to show unique people
-            const unique = new Map<string, Visit>();
-            if (data) {
-                data.forEach((v: Visit) => {
-                    if (!unique.has(v.gov_id)) unique.set(v.gov_id, v);
-                });
-            }
-            return Array.from(unique.values());
-
-        } catch (error) {
-            console.warn("Error searching visitors in DB (or offline), checking local store", error);
-
-            // Fallback search in memory store
-            const lowerQuery = query.toLowerCase();
-            const mockVisits = getMockVisits();
-            const results = mockVisits.filter(v =>
-                v.full_name.toLowerCase().includes(lowerQuery) ||
-                v.gov_id.toLowerCase().includes(lowerQuery)
-            );
-
-            const unique = new Map<string, Visit>();
-            results.forEach((v) => {
-                if (!unique.has(v.gov_id)) unique.set(v.gov_id, v);
-            });
-            return Array.from(unique.values());
-        }
-    }
-
-    async getVisitsByDate(date: string): Promise<Visit[]> {
-        const startDate = new Date(`${date}T00:00:00`);
-        const endDate = new Date(`${date}T23:59:59.999`);
-
-        try {
-            const { data, error } = await supabase
-                .from('visits')
-                .select('*')
-                .gte('timestamp', startDate.toISOString())
-                .lte('timestamp', endDate.toISOString())
-                .order('timestamp', { ascending: false });
-
-            if (error) throw error;
-            return data as Visit[];
-        } catch (error) {
-            console.warn("Error fetching visits from DB, checking local store", error);
-            const start = startDate.getTime();
-            const end = endDate.getTime();
-
-            const mockVisits = getMockVisits();
-            const results = mockVisits.filter(v => {
-                const t = new Date(v.timestamp).getTime();
-                return t >= start && t <= end;
-            });
-            return results.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        }
-    }
-
-    async getVisitHistory(startDate: string, endDate: string, searchTerm: string = ''): Promise<Visit[]> {
-        // Convert strings to ISO dates for comparison
-        const start = new Date(`${startDate}T00:00:00`).toISOString();
-        const end = new Date(`${endDate}T23:59:59.999`).toISOString();
-
-        try {
-            let query = supabase
-                .from('visits')
-                .select('*')
-                .gte('timestamp', start)
-                .lte('timestamp', end)
-                .order('timestamp', { ascending: false });
-
-            if (searchTerm) {
-                query = query.or(`full_name.ilike.%${searchTerm}%,gov_id.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%`);
-            }
-
-            const { data, error } = await query;
-            if (error) throw error;
-            return data as Visit[];
-        } catch (error) {
-            console.warn("Error fetching visit history from DB, checking local store", error);
-
-            // Fallback to local store
-            const startMs = new Date(start).getTime();
-            const endMs = new Date(end).getTime();
-            const searchLower = searchTerm.toLowerCase();
-
-            const mockVisits = getMockVisits();
-            const results = mockVisits.filter(v => {
-                const t = new Date(v.timestamp).getTime();
-                const matchesTime = t >= startMs && t <= endMs;
-                const matchesSearch = !searchTerm ||
-                    v.full_name.toLowerCase().includes(searchLower) ||
-                    v.gov_id.toLowerCase().includes(searchLower) ||
-                    v.company.toLowerCase().includes(searchLower);
-
-                return matchesTime && matchesSearch;
-            });
-
-            return results.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        }
-    }
+  }
 }
+
+// Mock visits localStorage helpers
+const MOCK_VISITS_KEY = 'nominAI_mock_visits';
+const getMockVisits = (): Visit[] => {
+  try {
+    const stored = localStorage.getItem(MOCK_VISITS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch { return []; }
+};
+const saveMockVisit = (visit: Visit) => {
+  try {
+    const visits = getMockVisits();
+    visits.push(visit);
+    localStorage.setItem(MOCK_VISITS_KEY, JSON.stringify(visits));
+  } catch { /* ignore */ }
+};
 
 export const dbService = new DbService();

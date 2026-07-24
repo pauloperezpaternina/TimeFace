@@ -10,7 +10,8 @@ export interface Collaborator {
   name: string;
   position: string;
   photo: string;
-  role_id?: string; // Link to a role for scheduling
+  role_id?: string;
+  document?: string;
 }
 
 export type AttendanceType = 'entry' | 'exit';

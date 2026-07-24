@@ -155,9 +155,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="container mx-auto">
-      <div className="flex justify-center mb-4">
-        <img src="https://logiserviceszf.com.co/wp-content/uploads/2021/12/LOGO-ORIGINAL-JUNIO-2021.png" alt="Logo" className="h-24 w-auto" />
-      </div>
       <h1 className="text-3xl font-bold mb-2 text-center text-gray-800 dark:text-gray-200">Control de Asistencia por Turno</h1>
       <p className="text-center text-gray-600 dark:text-gray-400 mb-6">{currentTime.toLocaleString('es-CO')}</p>
 
@@ -183,22 +180,13 @@ const Dashboard: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Registros del Día</h2>
-            <div className="relative">
-              <label htmlFor="date-picker" className="cursor-pointer relative flex items-center">
-                <input
-                  id="date-picker"
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-200 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pr-10 p-2.5"
-                />
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                  <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
-                  </svg>
-                </div>
-              </label>
-            </div>
+            <input
+              id="date-picker"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-200 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 px-3 py-2 w-auto"
+            />
           </div>
           <div className="overflow-y-auto max-h-96">
             {dailyRecords.length > 0 ? (
