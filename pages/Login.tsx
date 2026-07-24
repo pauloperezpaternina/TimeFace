@@ -37,20 +37,29 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            Acceso de Administrador
+    <div className="flex items-center justify-center min-h-[80vh] py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md p-10 space-y-8 bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] border border-white/40 dark:border-gray-800">
+        <div className="flex flex-col items-center">
+          <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-[1.25rem] flex items-center justify-center shadow-lg shadow-blue-500/30 mb-6">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+          </div>
+          <h2 className="text-center text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">
+            Iniciar sesión
           </h2>
+          <p className="mt-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
+            Administración de NominAI
+          </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
           <input type="hidden" name="remember" defaultValue="true" />
-          <div className="rounded-md shadow-sm -space-y-px">
+          <div className="space-y-4">
             <div>
-              <label htmlFor="email-address" className="sr-only">
-                Usuario o Email
-              </label>
+              <label htmlFor="email-address" className="sr-only">Usuario o Email</label>
               <input
                 id="email-address"
                 name="email"
@@ -59,14 +68,12 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Usuario o Email"
+                className="appearance-none block w-full px-5 py-4 border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 rounded-2xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent transition-all sm:text-base backdrop-blur-md"
+                placeholder="Usuario o email"
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
-                Contraseña
-              </label>
+              <label htmlFor="password" className="sr-only">Contraseña</label>
               <input
                 id="password"
                 name="password"
@@ -75,25 +82,26 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none block w-full px-5 py-4 border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 rounded-2xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent transition-all sm:text-base backdrop-blur-md"
                 placeholder="Contraseña"
               />
             </div>
           </div>
 
           {error && (
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
-              <p>{error}</p>
+            <div className="bg-red-50/80 dark:bg-red-900/20 backdrop-blur-md rounded-2xl p-4 text-sm text-red-600 dark:text-red-400 flex items-center justify-center gap-2 border border-red-100 dark:border-red-900/30" role="alert">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              <span className="font-medium">{error}</span>
             </div>
           )}
 
-          <div>
+          <div className="pt-2">
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed"
+              className="group relative w-full flex justify-center items-center py-4 px-4 text-base font-semibold rounded-2xl text-white bg-[#007AFF] hover:bg-[#0066D6] focus:outline-none focus:ring-4 focus:ring-[#007AFF]/30 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-[#007AFF]/20"
             >
-              {isLoading ? <Spinner size="5" /> : 'Iniciar Sesión'}
+              {isLoading ? <Spinner size="5" /> : 'Continuar'}
             </button>
           </div>
         </form>
