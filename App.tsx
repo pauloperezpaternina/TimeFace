@@ -57,14 +57,14 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <div className="min-h-screen bg-[var(--apple-bg)] dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       <Header 
         currentPage={currentPage} 
         setCurrentPage={setCurrentPage}
         currentUser={currentUser}
         onLogout={handleLogout}
       />
-      <main className="p-4 sm:p-6 lg:p-8">
+      <main className="pt-16 md:pt-14 pb-8 px-4 sm:px-6 lg:px-8">
         {renderContent()}
       </main>
     </div>
