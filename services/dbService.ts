@@ -125,6 +125,14 @@ class DbService {
     return rowsToArr<AttendanceRecord>(rs.columns, rs.rows);
   }
 
+  async getAttendanceRecordsByCollaboratorId(collaboratorId: string): Promise<AttendanceRecord[]> {
+    const rs = await turso.execute({
+      sql: 'SELECT * FROM attendance_records WHERE collaborator_id = ? ORDER BY timestamp DESC LIMIT 20',
+      args: [collaboratorId],
+    });
+    return rowsToArr<AttendanceRecord>(rs.columns, rs.rows);
+  }
+
   async addAttendanceRecord(record: Omit<AttendanceRecord, 'id' | 'captured_photo_url'>, photoBase64?: string | null): Promise<AttendanceRecord> {
     const id = generateId();
     const newRecord = { ...record, id, captured_photo_url: photoBase64 || undefined };

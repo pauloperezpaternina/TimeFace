@@ -24,21 +24,28 @@ const NavLink: React.FC<{
   setCurrentPage: (page: Page) => void;
   label: string;
   icon: React.ReactNode;
-}> = ({ page, currentPage, setCurrentPage, label, icon }) => {
+  isMobile?: boolean;
+}> = ({ page, currentPage, setCurrentPage, label, icon, isMobile }) => {
   const isActive = currentPage === page;
   
   return (
     <button
       onClick={() => setCurrentPage(page)}
-      className={`flex items-center gap-4 px-6 py-4 rounded-xl text-lg font-medium transition-all duration-200 ${
+      className={`flex items-center ${
+        isMobile 
+          ? 'gap-4 px-6 py-4 text-lg' 
+          : 'gap-1.5 px-2.5 py-1.5 text-xs lg:gap-2 lg:px-3 lg:py-2 lg:text-sm xl:px-4'
+      } rounded-xl font-medium transition-all duration-200 ${
         isActive
           ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
           : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
       }`}
       style={{ touchAction: 'manipulation' }}
     >
-      <span className={isActive ? 'text-white' : 'text-gray-400 dark:text-gray-500'}>{icon}</span>
-      {label}
+      <span className={`${isActive ? 'text-white' : 'text-gray-400 dark:text-gray-500'} ${!isMobile && '[&>svg]:w-4 [&>svg]:h-4 lg:[&>svg]:w-5 lg:[&>svg]:h-5'}`}>
+        {icon}
+      </span>
+      <span className="whitespace-nowrap">{label}</span>
     </button>
   );
 };
@@ -179,6 +186,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage, currentUse
                   setCurrentPage={handleNavClick}
                   label={item.label}
                   icon={item.icon}
+                  isMobile={true}
                 />
               ))}
             </nav>

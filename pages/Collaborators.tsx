@@ -13,18 +13,23 @@ const CollaboratorForm: React.FC<{
   const [name, setName] = useState('');
   const [position, setPosition] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
+  const [shiftId, setShiftId] = useState<string>('');
+  const [shifts, setShifts] = useState<any[]>([]);
   const [showCamera, setShowCamera] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    dbService.getShifts().then(setShifts).catch(console.error);
     if (collaboratorToEdit) {
       setName(collaboratorToEdit.name);
       setPosition(collaboratorToEdit.position);
       setPhoto(collaboratorToEdit.photo);
+      setShiftId(''); // We reset it so they can choose to assign a new shift
     } else {
       setName('');
       setPosition('');
       setPhoto(null);
+      setShiftId('');
     }
   }, [collaboratorToEdit]);
 
@@ -52,11 +57,29 @@ const CollaboratorForm: React.FC<{
     
     setIsSaving(true);
     try {
+      let savedCollaborator;
       if (collaboratorToEdit) {
-        await dbService.updateCollaborator({ ...collaboratorToEdit, name, position, photo });
+        savedCollaborator = await dbService.updateCollaborator({ ...collaboratorToEdit, name, position, photo });
       } else {
-        await dbService.addCollaborator({ name, position, photo });
+        savedCollaborator = await dbService.addCollaborator({ name, position, photo });
       }
+
+      if (shiftId) {
+        const today = new Date();
+        const newSchedules = [];
+        for (let i = 0; i < 30; i++) {
+          const d = new Date(today);
+          d.setDate(d.getDate() + i);
+          newSchedules.push({
+            collaborator_id: savedCollaborator.id,
+            shift_id: shiftId,
+            date: d.toISOString().split('T')[0],
+            status: 'scheduled' as const,
+          });
+        }
+        await dbService.bulkCreateSchedules(newSchedules);
+      }
+
       onSave();
     } catch (error) {
       console.error("Failed to save collaborator:", error);
@@ -85,6 +108,16 @@ const CollaboratorForm: React.FC<{
       <div>
         <label htmlFor="position" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Cargo</label>
         <input type="text" id="position" value={position} onChange={e => setPosition(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
+      </div>
+      <div>
+        <label htmlFor="shift" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Asignar Turno Fijo (Próximos 30 días)</label>
+        <select id="shift" value={shiftId} onChange={e => setShiftId(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+          <option value="">-- No asignar turno ahora --</option>
+          {shifts.map(shift => (
+            <option key={shift.id} value={shift.id}>{shift.name} ({shift.start_time} - {shift.end_time})</option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-gray-500">Al seleccionar un turno, se programará automáticamente la asistencia para este colaborador durante los próximos 30 días.</p>
       </div>
       <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Foto de Referencia</label>

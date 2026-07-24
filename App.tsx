@@ -64,7 +64,7 @@ const App: React.FC = () => {
         currentUser={currentUser}
         onLogout={handleLogout}
       />
-      <main className="pt-16 md:pt-14 pb-8 px-4 sm:px-6 lg:px-8">
+      <main className="pt-20 md:pt-16 pb-8 px-4 sm:px-6 lg:px-8">
         {renderContent()}
       </main>
     </div>
