@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { dbService } from '../services/dbService';
+import { generateTimeBasedPIN } from '../services/security';
 import { Collaborator } from '../types';
+import QRCode from 'react-qr-code';
 import Modal from '../components/Modal';
 import CameraCapture from '../components/CameraCapture';
 import Spinner from '../components/Spinner';
@@ -150,6 +152,28 @@ const Collaborators: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [collaboratorToEdit, setCollaboratorToEdit] = useState<Collaborator | null>(null);
   const [collaboratorToDelete, setCollaboratorToDelete] = useState<Collaborator | null>(null);
+  const [collaboratorForQR, setCollaboratorForQR] = useState<Collaborator | null>(null);
+  const [qrPin, setQrPin] = useState<string>('');
+  const [qrPinTimeLeft, setQrPinTimeLeft] = useState<number>(0);
+
+  // Update PIN and countdown periodically if QR modal is open
+  useEffect(() => {
+    let interval: number;
+    
+    const updatePinAndTime = () => {
+      if (!collaboratorForQR) return;
+      setQrPin(generateTimeBasedPIN(collaboratorForQR.id));
+      const window20Min = Math.floor(Date.now() / (1000 * 60 * 20));
+      const nextWindowStart = (window20Min + 1) * (1000 * 60 * 20);
+      setQrPinTimeLeft(Math.max(0, nextWindowStart - Date.now()));
+    };
+
+    if (collaboratorForQR) {
+      updatePinAndTime();
+      interval = window.setInterval(updatePinAndTime, 1000); // Check every second
+    }
+    return () => clearInterval(interval);
+  }, [collaboratorForQR]);
 
   const loadCollaborators = useCallback(async () => {
     setIsLoading(true);
@@ -233,7 +257,8 @@ const Collaborators: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap"><img className="h-12 w-12 rounded-full object-cover" src={collaborator.photo} alt={collaborator.name} /></td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{collaborator.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{collaborator.position}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                        <button onClick={() => setCollaboratorForQR(collaborator)} className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">Generar QR</button>
                         <button onClick={() => handleEdit(collaborator)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Editar</button>
                         <button onClick={() => setCollaboratorToDelete(collaborator)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Eliminar</button>
                         </td>
@@ -248,10 +273,50 @@ const Collaborators: React.FC = () => {
         isOpen={!!collaboratorToDelete} 
         onClose={() => setCollaboratorToDelete(null)} 
         onConfirm={handleDelete}
-        title="Eliminar Colaborador"
+        title="Confirmar Eliminación"
       >
-        ¿Está seguro de que desea eliminar a {collaboratorToDelete?.name}? Esta acción no se puede deshacer.
+        ¿Estás seguro de que deseas eliminar al colaborador {collaboratorToDelete?.name}? Esta acción no se puede deshacer.
       </Modal>
+
+      {/* QR Modal */}
+      {collaboratorForQR && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-sm w-full p-6 text-center">
+            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Código QR para Foto</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              Escanea el código con tu celular para tomar la foto de <strong>{collaboratorForQR.name}</strong>.
+            </p>
+            
+            <div className="bg-white p-4 rounded-lg inline-block shadow-sm mb-6 hover:opacity-80 transition-opacity cursor-pointer">
+              <a 
+                href={`${window.location.origin}${window.location.pathname}?page=update-photo&id=${collaboratorForQR.id}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                title="Hacer clic para abrir en una nueva pestaña"
+              >
+                <QRCode 
+                  value={`${window.location.origin}${window.location.pathname}?page=update-photo&id=${collaboratorForQR.id}`}
+                  size={200}
+                />
+              </a>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                PIN de Seguridad (cambia en {Math.floor(qrPinTimeLeft / 60000)}:{(Math.floor((qrPinTimeLeft % 60000) / 1000)).toString().padStart(2, '0')}):
+              </p>
+              <p className="text-4xl font-bold tracking-widest text-blue-600 dark:text-blue-400">{qrPin}</p>
+            </div>
+            
+            <button
+              onClick={() => setCollaboratorForQR(null)}
+              className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

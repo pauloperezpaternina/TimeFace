@@ -8,12 +8,14 @@ import Scheduling from './pages/Scheduling';
 import Login from './pages/Login';
 import VisitorRegistration from './pages/VisitorRegistration';
 import Locations from './pages/Locations';
+import UpdatePhoto from './pages/UpdatePhoto';
 import { User } from './types';
 
-export type Page = 'dashboard' | 'scheduling' | 'collaborators' | 'admin' | 'reports' | 'login' | 'visitor-registration' | 'locations';
+export type Page = 'dashboard' | 'scheduling' | 'collaborators' | 'admin' | 'reports' | 'login' | 'visitor-registration' | 'locations' | 'update-photo';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>('dashboard');
+  const urlPage = new URLSearchParams(window.location.search).get('page') as Page;
+  const [currentPage, setCurrentPage] = useState<Page>(urlPage || 'dashboard');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const handleLoginSuccess = (user: User) => {
@@ -32,6 +34,7 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     // If not logged in, and trying to access a protected page OR the login page itself
+    // Note: update-photo is public
     if (!currentUser && (isProtectedPage || currentPage === 'login')) {
       return <Login onLoginSuccess={handleLoginSuccess} />;
     }
@@ -41,6 +44,8 @@ const App: React.FC = () => {
         return <Dashboard />;
       case 'visitor-registration':
         return <VisitorRegistration setCurrentPage={setCurrentPage} />;
+      case 'update-photo':
+        return <UpdatePhoto />;
       case 'scheduling':
         return <Scheduling />;
       case 'collaborators':
