@@ -194,51 +194,53 @@ const AttendanceCorrections: React.FC = () => {
             {selectedUser && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
                     <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-xl">
-                        <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Registrar Salida Manual</h3>
-                        <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
-                            Registrando salida para <strong>{selectedUser.collaborator.name}</strong>.
+                        <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">Cerrar Turno Pendiente</h3>
+                        <p className="mb-4 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                            Colaborador: <strong className="text-gray-900 dark:text-white">{selectedUser.collaborator.name}</strong>
                             <br />
-                            Entrada original: {new Date(selectedUser.lastRecord.timestamp).toLocaleString('es-CO')}
+                            Entrada registrada: <span className="font-semibold text-blue-600 dark:text-blue-400">{new Date(selectedUser.lastRecord.timestamp).toLocaleString('es-CO')}</span>
                         </p>
 
                         <form onSubmit={handleSaveExit} className="space-y-4">
+                            <div className="text-sm font-medium text-gray-800 dark:text-gray-200 border-b pb-1 dark:border-gray-700">
+                                ¿En qué fecha y hora finalizó este turno?
+                            </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha de Salida</label>
+                                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">Fecha de Cierre</label>
                                 <input
                                     type="date"
                                     required
                                     value={exitDate}
                                     onChange={e => setExitDate(e.target.value)}
-                                    className="mt-1 block w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-gray-900 dark:text-white"
+                                    className="block w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Hora de Salida</label>
+                                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">Hora de Cierre</label>
                                 <input
                                     type="time"
                                     required
                                     value={exitTime}
                                     onChange={e => setExitTime(e.target.value)}
-                                    // Use 'style' to force light scheme for time picker icon visibility if needed, or rely on dark mode CSS
-                                    className="mt-1 block w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-gray-900 dark:text-white"
+                                    className="block w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
                             </div>
 
-                            <div className="flex justify-end space-x-3 mt-6">
+                            <div className="flex justify-end space-x-3 mt-6 pt-2">
                                 <button
                                     type="button"
                                     onClick={handleCloseModal}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSaving}
-                                    className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50"
+                                    className="flex items-center px-4 py-2 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg shadow-md disabled:opacity-50 transition-colors"
                                 >
                                     {isSaving && <Spinner size="4" />}
-                                    <span className={isSaving ? "ml-2" : ""}>Guardar</span>
+                                    <span className={isSaving ? "ml-2" : ""}>Confirmar y Cerrar Turno</span>
                                 </button>
                             </div>
                         </form>
