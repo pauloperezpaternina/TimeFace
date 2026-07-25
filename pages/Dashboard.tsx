@@ -112,10 +112,14 @@ const getLocation = async (): Promise<{ latitude: number, longitude: number, nam
               }
             }
             
-            if (poiName && fullRoad && poiName !== roadName && poiName !== fullRoad) {
-              name = `${poiName} - ${fullRoad}`;
+            let baseAddress = fullRoad;
+            if (data.display_name) {
+              baseAddress = data.display_name.split(',').slice(0, 3).map((s: string) => s.trim()).join(', ');
+            }
+            if (poiName && baseAddress && !baseAddress.includes(poiName)) {
+              name = `${poiName} - ${baseAddress}`;
             } else {
-              name = poiName || fullRoad || data.display_name?.split(',')[0];
+              name = baseAddress || poiName || 'Ubicación obtenida';
             }
           }
         } catch (e) {
@@ -145,6 +149,7 @@ const Dashboard: React.FC = () => {
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number, longitude: number, name?: string } | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [progressInfo, setProgressInfo] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
@@ -477,19 +482,30 @@ const Dashboard: React.FC = () => {
                   </div>
                   
                   {currentLocation && !isLoadingLocation ? (
-                    <a 
-                      href={`https://www.google.com/maps/search/?api=1&query=${currentLocation.latitude},${currentLocation.longitude}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full max-w-xs flex items-center gap-2 p-3 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-xl border border-blue-100 dark:border-blue-800/30 text-sm mb-4 cursor-pointer transition-colors"
-                      title="Abrir en Google Maps"
-                    >
-                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                      <span className="truncate font-medium flex-1 text-left">
-                        {currentLocation.name || 'Ubicación obtenida'}
-                      </span>
-                      <svg className="w-4 h-4 flex-shrink-0 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                    </a>
+                    <div className="w-full max-w-sm mb-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                      <div className="relative h-32 cursor-pointer group" onClick={() => setIsMapModalOpen(true)}>
+                        <iframe 
+                          width="100%" 
+                          height="100%" 
+                          style={{ border: 0, pointerEvents: 'none' }} 
+                          loading="lazy" 
+                          allowFullScreen 
+                          src={`https://maps.google.com/maps?q=${currentLocation.latitude},${currentLocation.longitude}&hl=es&z=15&output=embed`}
+                        ></iframe>
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 flex items-center justify-center transition-colors">
+                          <div className="bg-white/90 text-gray-800 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                            Ampliar mapa
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 flex items-center gap-2">
+                        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <span className="truncate font-medium flex-1 text-left text-sm">
+                          {currentLocation.name || 'Ubicación obtenida'}
+                        </span>
+                      </div>
+                    </div>
                   ) : (
                     <div className="w-full max-w-xs flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded-xl border border-blue-100 dark:border-blue-800/30 text-sm mb-4">
                       <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -637,6 +653,43 @@ const Dashboard: React.FC = () => {
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             <img src={selectedPhoto} alt="Captura" className="w-full h-auto max-h-[80vh] object-contain rounded-xl shadow-2xl" />
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Mapa */}
+      {isMapModalOpen && currentLocation && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setIsMapModalOpen(false)}>
+          <div className="relative max-w-4xl w-full h-[70vh] bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                {currentLocation.name || 'Ubicación exacta'}
+              </h3>
+              <button onClick={() => setIsMapModalOpen(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="flex-1 w-full h-full">
+              <iframe 
+                width="100%" 
+                height="100%" 
+                style={{ border: 0 }} 
+                loading="lazy" 
+                allowFullScreen 
+                src={`https://maps.google.com/maps?q=${currentLocation.latitude},${currentLocation.longitude}&hl=es&z=17&output=embed`}
+              ></iframe>
+            </div>
+            <div className="p-3 bg-gray-50 dark:bg-gray-800/50 flex justify-end">
+               <a 
+                 href={`https://www.google.com/maps/search/?api=1&query=${currentLocation.latitude},${currentLocation.longitude}`}
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+               >
+                 Abrir en Google Maps <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+               </a>
+            </div>
           </div>
         </div>
       )}
