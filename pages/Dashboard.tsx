@@ -450,7 +450,7 @@ const Dashboard: React.FC = () => {
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-6 space-y-4 relative z-0 overflow-hidden">
-              <svg className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 md:w-64 md:h-64 text-gray-100 dark:text-gray-700 opacity-40 pointer-events-none -z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={0.5}>
+              <svg className="absolute top-1/2 -left-10 md:-left-16 -translate-y-1/2 w-48 h-48 md:w-64 md:h-64 text-gray-300 dark:text-gray-700 opacity-60 pointer-events-none -z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={0.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
               {result.status !== 'none' && (
@@ -580,48 +580,48 @@ const Dashboard: React.FC = () => {
           <div className="flex-1 overflow-y-auto max-h-[350px] md:max-h-[450px] p-3 md:p-4 space-y-2">
             {(collaboratorHistory ? collaboratorHistory.records : dailyRecords).length > 0 ? (
               (collaboratorHistory ? collaboratorHistory.records : dailyRecords).map(record => (
-                <div key={record.id} className="flex items-center justify-between p-3 md:p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                  <div className="flex items-center gap-3 md:gap-4">
+                <div key={record.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 md:p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  <div className="flex items-center gap-3 md:gap-4 min-w-0">
                     {record.captured_photo_url && (
                       <img 
                         src={record.captured_photo_url} 
                         alt="" 
                         onClick={() => setSelectedPhoto(record.captured_photo_url!)}
-                        className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover border border-gray-200 dark:border-gray-600 cursor-pointer hover:opacity-80 transition-opacity" 
+                        className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0 rounded-full object-cover border border-gray-200 dark:border-gray-600 cursor-pointer hover:opacity-80 transition-opacity" 
                       />
                     )}
-                    <div>
-                      <p className="font-semibold text-sm md:text-base text-gray-900 dark:text-white">{record.collaborator_name}</p>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm md:text-base text-gray-900 dark:text-white truncate">{record.collaborator_name}</p>
+                      <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 truncate">
                         {collaboratorHistory 
                           ? new Date(record.timestamp).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) 
                           : new Date(record.timestamp).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
                     {record.latitude && record.longitude && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1 sm:flex-initial">
                         <a 
                           href={`https://www.google.com/maps/search/?api=1&query=${record.latitude},${record.longitude}`} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="p-2 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800/40 transition-colors"
+                          className="p-2 rounded-full flex-shrink-0 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800/40 transition-colors"
                           title="Ver ubicación"
                         >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                          <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
                         </a>
                         {record.location_name && (
-                          <span className="text-xs text-gray-500 max-w-[120px] truncate" title={record.location_name}>
+                          <span className="text-xs text-gray-500 sm:max-w-[120px] truncate" title={record.location_name}>
                             {record.location_name}
                           </span>
                         )}
                       </div>
                     )}
-                    <span className={`px-3 py-1.5 text-xs font-semibold rounded-full ${record.type === 'entry' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'}`}>
+                    <span className={`px-3 py-1.5 text-xs font-semibold rounded-full flex-shrink-0 ${record.type === 'entry' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'}`}>
                       {record.type === 'entry' ? 'Entrada' : 'Salida'}
                     </span>
                   </div>

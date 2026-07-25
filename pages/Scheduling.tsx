@@ -39,8 +39,8 @@ const Scheduling: React.FC = () => {
     // Determine current day for highlighting
     const todayStr = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
 
-    const loadData = useCallback(async () => {
-        setIsLoading(true);
+    const loadData = useCallback(async (showSpinner = true) => {
+        if (showSpinner) setIsLoading(true);
         setError(null);
         const startDate = weekDays[0].toISOString().split('T')[0];
         const endDate = weekDays[6].toISOString().split('T')[0];
@@ -60,12 +60,12 @@ const Scheduling: React.FC = () => {
             console.error("Failed to load scheduling data:", err);
             setError(errorMessage);
         } finally {
-            setIsLoading(false);
+            if (showSpinner) setIsLoading(false);
         }
     }, [weekDays]);
 
     useEffect(() => {
-        loadData();
+        loadData(true);
     }, [loadData]);
 
     const handlePrevWeek = () => {
@@ -95,7 +95,7 @@ const Scheduling: React.FC = () => {
             } else {
                 await dbService.addSchedule({ collaborator_id: collaboratorId, date, shift_id: shiftId });
             }
-            loadData();
+            loadData(false);
         } catch (error) {
             console.error("Error updating schedule", error);
         }
@@ -106,7 +106,7 @@ const Scheduling: React.FC = () => {
         if (existingSchedule) {
             try {
                 await dbService.deleteSchedule(existingSchedule.id);
-                loadData();
+                loadData(false);
             } catch (error) {
                 console.error("Error deleting schedule", error);
             }
@@ -121,7 +121,7 @@ const Scheduling: React.FC = () => {
             const startDate = weekDays[0].toISOString().split('T')[0];
             const endDate = weekDays[6].toISOString().split('T')[0];
             await dbService.copyScheduleFromPreviousWeek(startDate, endDate);
-            await loadData();
+            await loadData(false);
             alert("Horarios copiados exitosamente.");
         } catch (e) {
             alert("Error al copiar horarios: " + (e instanceof Error ? e.message : 'Desconocido'));
@@ -158,7 +158,7 @@ const Scheduling: React.FC = () => {
 
         try {
             await dbService.bulkCreateSchedules(newSchedules);
-            await loadData();
+            await loadData(false);
             alert(`Se agregaron ${newSchedules.length} turnos.`);
         } catch (e) {
             alert("Error al rellenar horarios.");
