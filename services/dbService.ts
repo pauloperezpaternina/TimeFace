@@ -152,6 +152,10 @@ class DbService {
     return rowToObj<AttendanceRecord>(rs.columns, rs.rows[0] );
   }
 
+  async deleteAttendanceRecord(recordId: string): Promise<void> {
+    await turso.execute({ sql: 'DELETE FROM attendance_records WHERE id = ?', args: [recordId] });
+  }
+
   // --- Shifts ---
   async getShifts(): Promise<Shift[]> {
     const rs = await turso.execute('SELECT * FROM shifts');
@@ -467,6 +471,25 @@ class DbService {
 
   async deleteKnownLocation(locationId: string): Promise<void> {
     await turso.execute({ sql: 'DELETE FROM known_locations WHERE id = ?', args: [locationId] });
+  }
+
+  // --- Settings ---
+  async getSetting(key: string, defaultValue: string = ''): Promise<string> {
+    await turso.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    const rs = await turso.execute({
+      sql: 'SELECT value FROM settings WHERE key = ?',
+      args: [key]
+    });
+    if (rs.rows.length === 0) return defaultValue;
+    return rs.rows[0].value as string;
+  }
+
+  async setSetting(key: string, value: string): Promise<void> {
+    await turso.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    await turso.execute({
+      sql: 'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?',
+      args: [key, value, value]
+    });
   }
 }
 

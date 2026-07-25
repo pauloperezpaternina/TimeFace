@@ -83,3 +83,9 @@ CREATE TABLE IF NOT EXISTS known_locations (
     lon REAL NOT NULL,
     radius REAL NOT NULL DEFAULT 100
 );
+
+-- Tabla de configuraciones
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);

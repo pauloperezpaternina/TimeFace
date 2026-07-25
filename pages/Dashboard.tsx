@@ -151,6 +151,7 @@ const Dashboard: React.FC = () => {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [progressInfo, setProgressInfo] = useState({ current: 0, total: 0 });
+  const [showRecords, setShowRecords] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -388,12 +389,26 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="container mx-auto space-y-4 md:space-y-6">
-      <div className="text-center mb-2 md:mb-4">
-        <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Control de Asistencia</h1>
-        <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">{currentTime.toLocaleString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-2 md:mb-4 gap-4">
+        <div className="text-center md:text-left">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Control de Asistencia</h1>
+          <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">{currentTime.toLocaleString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Ver registros</span>
+          <button 
+            type="button" 
+            onClick={() => setShowRecords(!showRecords)}
+            className={`${showRecords ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'} relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2`}
+            role="switch"
+            aria-checked={showRecords}
+          >
+            <span aria-hidden="true" className={`${showRecords ? 'translate-x-5' : 'translate-x-0'} pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`} />
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+      <div className={`grid grid-cols-1 ${showRecords ? 'lg:grid-cols-2' : 'max-w-xl mx-auto'} gap-4 md:gap-6`}>
 
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col min-h-[250px] md:min-h-[320px]">
           {isLoading ? (
@@ -529,7 +544,8 @@ const Dashboard: React.FC = () => {
           )}
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
+        {showRecords && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-5 border-b border-gray-200 dark:border-gray-700">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               {collaboratorHistory ? `Historial de ${collaboratorHistory.name}` : 'Registros del Día'}
@@ -638,6 +654,7 @@ const Dashboard: React.FC = () => {
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* Modal de foto */}

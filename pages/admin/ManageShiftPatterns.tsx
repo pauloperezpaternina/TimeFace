@@ -135,9 +135,14 @@ const ManageShiftPatterns: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Patrones de Turnos</h2>
-        <button onClick={() => { setPatternToEdit(null); setShowForm(true); }} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Patrones de Turnos</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 max-w-2xl">
+            Los patrones de turnos te permiten definir secuencias rotativas de horarios (por ejemplo, 4 días de trabajo y 2 días de descanso). Una vez creados, podrás asignarlos automáticamente a tus colaboradores para múltiples semanas desde la sección de <strong>Planificación</strong>, ahorrándote tiempo en la asignación manual.
+          </p>
+        </div>
+        <button onClick={() => { setPatternToEdit(null); setShowForm(true); }} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 whitespace-nowrap">
           Crear Patrón
         </button>
       </div>

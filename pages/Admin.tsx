@@ -4,8 +4,9 @@ import ManageRoles from './admin/ManageRoles';
 import ManageShifts from './admin/ManageShifts';
 import ManageShiftPatterns from './admin/ManageShiftPatterns';
 import AttendanceCorrections from './admin/AttendanceCorrections';
+import ManageSettings from './admin/ManageSettings';
 
-type AdminTab = 'users' | 'roles' | 'shifts' | 'patterns' | 'corrections';
+type AdminTab = 'users' | 'roles' | 'shifts' | 'patterns' | 'corrections' | 'settings';
 
 const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
@@ -22,6 +23,8 @@ const Admin: React.FC = () => {
         return <ManageShiftPatterns />;
       case 'corrections':
         return <AttendanceCorrections />;
+      case 'settings':
+        return <ManageSettings />;
       default:
         return <ManageUsers />;
     }
@@ -51,6 +54,7 @@ const Admin: React.FC = () => {
         <TabButton tabName="shifts" label="Gestionar Turnos" />
         <TabButton tabName="patterns" label="Gestionar Patrones" />
         <TabButton tabName="corrections" label="Correcciones" />
+        <TabButton tabName="settings" label="Configuración" />
       </div>
       <div>{renderContent()}</div>
     </div>

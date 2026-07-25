@@ -16,6 +16,8 @@ const VisitorRegistration: React.FC<VisitorRegistrationProps> = ({ setCurrentPag
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [consentGiven, setConsentGiven] = useState(false); // New state for consent
+  const [authText, setAuthText] = useState('');
+  const [isAuthTextLoading, setIsAuthTextLoading] = useState(true);
   
   const signaturePadRef = useRef<SignaturePadRef>(null);
   
@@ -47,9 +49,21 @@ const VisitorRegistration: React.FC<VisitorRegistrationProps> = ({ setCurrentPag
     }
   };
 
+  const loadSettings = async () => {
+    try {
+      const text = await dbService.getSetting('authorization_text', '');
+      setAuthText(text);
+    } catch (e) {
+      console.error("Failed to load settings", e);
+    } finally {
+      setIsAuthTextLoading(false);
+    }
+  };
+
   // Cleanup timeout on unmount and load visits
   useEffect(() => {
     loadTodaysVisits();
+    loadSettings();
     return () => {
       if (searchTimeout.current) {
         window.clearTimeout(searchTimeout.current);
@@ -151,6 +165,10 @@ const VisitorRegistration: React.FC<VisitorRegistrationProps> = ({ setCurrentPag
   };
 
   // Conditional rendering for consent screen
+  if (isAuthTextLoading) {
+    return <div className="flex justify-center items-center h-full min-h-[calc(100vh-4rem)]"><Spinner size="10" /></div>;
+  }
+
   if (!consentGiven) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-8">
@@ -161,35 +179,41 @@ const VisitorRegistration: React.FC<VisitorRegistrationProps> = ({ setCurrentPag
           <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">
             Ley 1581 de 2012
           </h2>
-          <div className="text-gray-700 dark:text-gray-300 text-sm space-y-3 mb-6 max-h-80 overflow-y-auto p-2 border rounded-md bg-gray-50 dark:bg-gray-700">
-            <p>
-              En cumplimiento de la Ley 1581 de 2012 y el Decreto 1377 de 2013,
-              autorizo de manera voluntaria, previa, explícita, informada e inequívoca
-              a Logiservices ZF S.A.S. para recolectar, almacenar, usar, circular,
-              suprimir, procesar, compilar, intercambiar, actualizar y disponer de
-              los datos que he suministrado, los cuales serán incorporados en una
-              base de datos de la que es responsable Logiservices ZF S.A.S.
-            </p>
-            <p>
-              La información obtenida será utilizada para las siguientes finalidades:
-            </p>
-            <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Gestionar el control de acceso y seguridad de las instalaciones.</li>
-              <li>Mantener un registro de visitantes para fines de auditoría y cumplimiento.</li>
-              <li>Contactarme en caso de emergencia o para seguimiento de mi visita.</li>
-              <li>Realizar análisis estadísticos internos para mejorar nuestros servicios.</li>
-            </ul>
-            <p>
-              Declaro que se me ha informado sobre mis derechos como titular de datos,
-              especialmente el derecho a conocer, actualizar, rectificar y suprimir
-              mis datos personales, así como a revocar la autorización otorgada.
-              Estos derechos podrán ser ejercidos a través de los canales de atención
-              dispuestos por Logiservices ZF S.A.S. en su pagina web logiserviceszf.com.co
-            </p>
-            <p className="font-semibold">
-              Al hacer clic en "Acepto", usted manifiesta su consentimiento expreso
-              para el tratamiento de sus datos personales bajo las condiciones aquí descritas.
-            </p>
+          <div className="text-gray-700 dark:text-gray-300 text-sm mb-6 max-h-80 overflow-y-auto p-4 border rounded-md bg-gray-50 dark:bg-gray-700 whitespace-pre-wrap">
+            {authText ? (
+              authText
+            ) : (
+              <div className="space-y-3">
+                <p>
+                  En cumplimiento de la Ley 1581 de 2012 y el Decreto 1377 de 2013,
+                  autorizo de manera voluntaria, previa, explícita, informada e inequívoca
+                  a Logiservices ZF S.A.S. para recolectar, almacenar, usar, circular,
+                  suprimir, procesar, compilar, intercambiar, actualizar y disponer de
+                  los datos que he suministrado, los cuales serán incorporados en una
+                  base de datos de la que es responsable Logiservices ZF S.A.S.
+                </p>
+                <p>
+                  La información obtenida será utilizada para las siguientes finalidades:
+                </p>
+                <ul className="list-disc list-inside ml-4 space-y-1">
+                  <li>Gestionar el control de acceso y seguridad de las instalaciones.</li>
+                  <li>Mantener un registro de visitantes para fines de auditoría y cumplimiento.</li>
+                  <li>Contactarme en caso de emergencia o para seguimiento de mi visita.</li>
+                  <li>Realizar análisis estadísticos internos para mejorar nuestros servicios.</li>
+                </ul>
+                <p>
+                  Declaro que se me ha informado sobre mis derechos como titular de datos,
+                  especialmente el derecho a conocer, actualizar, rectificar y suprimir
+                  mis datos personales, así como a revocar la autorización otorgada.
+                  Estos derechos podrán ser ejercidos a través de los canales de atención
+                  dispuestos por Logiservices ZF S.A.S. en su pagina web logiserviceszf.com.co
+                </p>
+                <p className="font-semibold">
+                  Al hacer clic en "Acepto", usted manifiesta su consentimiento expreso
+                  para el tratamiento de sus datos personales bajo las condiciones aquí descritas.
+                </p>
+              </div>
+            )}
           </div>
           <div className="flex justify-center space-x-4 mt-6">
             <button
