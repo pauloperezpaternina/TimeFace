@@ -14,6 +14,43 @@ const Locations: React.FC = () => {
   const [lat, setLat] = useState('');
   const [lon, setLon] = useState('');
   const [radius, setRadius] = useState('100');
+  const [isLocating, setIsLocating] = useState(false);
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert('La geolocalización no está soportada por tu navegador.');
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setLat(latitude.toFixed(6));
+        setLon(longitude.toFixed(6));
+        
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`);
+          const data = await res.json();
+          if (data && data.address) {
+             const addr = data.address;
+             const generatedName = addr.poi || addr.road || addr.neighbourhood || addr.suburb || data.name || '';
+             if (generatedName && !name) {
+               setName(generatedName);
+             }
+          }
+        } catch (e) {
+          console.error("Error reverse geocoding:", e);
+        }
+        setIsLocating(false);
+      },
+      (error) => {
+        setIsLocating(false);
+        console.error(error);
+        alert('No se pudo obtener tu ubicación. Asegúrate de dar los permisos correspondientes al navegador.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   useEffect(() => {
     loadLocations();
@@ -215,6 +252,26 @@ const Locations: React.FC = () => {
                     placeholder="Ej: -74.7813"
                   />
                 </div>
+              </div>
+              <div className="flex justify-end -mt-2 mb-2">
+                <button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  disabled={isLocating}
+                  className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center transition-colors disabled:opacity-50"
+                >
+                  {isLocating ? (
+                    <>
+                      <Spinner size="4" />
+                      <span className="ml-2">Obteniendo ubicación...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      Usar mi ubicación actual
+                    </>
+                  )}
+                </button>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Radio (Metros)</label>
