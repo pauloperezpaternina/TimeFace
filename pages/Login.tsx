@@ -37,27 +37,27 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[80vh] py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md p-10 space-y-8 bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] border border-white/40 dark:border-gray-800">
+    <div className="flex items-center justify-center min-h-[70vh] py-6 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md p-6 sm:p-8 space-y-6 bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] border border-white/40 dark:border-gray-800">
         <div className="flex flex-col items-center">
-          <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-[1.25rem] flex items-center justify-center shadow-lg shadow-blue-500/30 mb-6">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <div className="w-14 h-14 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 mb-4">
+            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
               <line x1="16" y1="2" x2="16" y2="6" />
               <line x1="8" y1="2" x2="8" y2="6" />
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
           </div>
-          <h2 className="text-center text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">
+          <h2 className="text-center text-2xl font-semibold tracking-tight text-gray-900 dark:text-white">
             Iniciar sesión
           </h2>
-          <p className="mt-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
             Administración de NominAI
           </p>
         </div>
-        <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <input type="hidden" name="remember" defaultValue="true" />
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div>
               <label htmlFor="email-address" className="sr-only">Usuario o Email</label>
               <input
@@ -68,7 +68,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none block w-full px-5 py-4 border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 rounded-2xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent transition-all sm:text-base backdrop-blur-md"
+                className="appearance-none block w-full px-4 py-3 border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent transition-all text-sm sm:text-base backdrop-blur-md"
                 placeholder="Usuario o email"
               />
             </div>
@@ -82,7 +82,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none block w-full px-5 py-4 border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 rounded-2xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent transition-all sm:text-base backdrop-blur-md"
+                className="appearance-none block w-full px-4 py-3 border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent transition-all text-sm sm:text-base backdrop-blur-md"
                 placeholder="Contraseña"
               />
             </div>
@@ -99,7 +99,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center items-center py-4 px-4 text-base font-semibold rounded-2xl text-white bg-[#007AFF] hover:bg-[#0066D6] focus:outline-none focus:ring-4 focus:ring-[#007AFF]/30 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-[#007AFF]/20"
+              className="group relative w-full flex justify-center items-center py-3 px-4 text-sm sm:text-base font-semibold rounded-xl text-white bg-[#007AFF] hover:bg-[#0066D6] focus:outline-none focus:ring-4 focus:ring-[#007AFF]/30 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-[#007AFF]/20"
             >
               {isLoading ? <Spinner size="5" /> : 'Continuar'}
             </button>

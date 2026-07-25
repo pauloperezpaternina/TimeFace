@@ -388,14 +388,14 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="container mx-auto space-y-4 md:space-y-6">
-      <div className="text-center mb-4">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Control de Asistencia</h1>
-        <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 mt-1">{currentTime.toLocaleString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+      <div className="text-center mb-2 md:mb-4">
+        <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Control de Asistencia</h1>
+        <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">{currentTime.toLocaleString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col min-h-[300px] md:min-h-[400px]">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col min-h-[250px] md:min-h-[320px]">
           {isLoading ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8">
               {progressInfo.total > 0 ? (
@@ -449,7 +449,10 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-6">
+            <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-6 space-y-4 relative z-0 overflow-hidden">
+              <svg className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 md:w-64 md:h-64 text-gray-100 dark:text-gray-700 opacity-40 pointer-events-none -z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={0.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
               {result.status !== 'none' && (
                 <div className={`w-full max-w-md p-4 rounded-xl border-l-4 ${result.status === 'success' ? 'bg-green-50 border-green-500 text-green-800 dark:bg-green-900/20 dark:border-green-500 dark:text-green-300' : result.status === 'error' ? 'bg-red-50 border-red-500 text-red-800 dark:bg-red-900/20 dark:border-red-500 dark:text-red-300' : result.status === 'warning' ? 'bg-yellow-50 border-yellow-500 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-500 dark:text-yellow-300' : 'bg-blue-50 border-blue-500 text-blue-800 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'}`}>
                   <div className="flex items-start gap-3">
@@ -471,19 +474,14 @@ const Dashboard: React.FC = () => {
 
               {result.status === 'none' && (
                 <>
-                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                    <svg className="w-8 h-8 md:w-10 md:h-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                  </div>
-                  <div className="text-center space-y-1 md:space-y-2 mb-1 md:mb-2">
-                    <h3 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Selecciona una acción</h3>
-                    <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">La cámara se activará para identificar tu rostro</p>
+                  <div className="text-center space-y-1 mb-1">
+                    <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">Selecciona una acción</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">La cámara se activará para identificar tu rostro</p>
                   </div>
                   
                   {currentLocation && !isLoadingLocation ? (
-                    <div className="w-full max-w-sm mb-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                      <div className="relative h-32 cursor-pointer group" onClick={() => setIsMapModalOpen(true)}>
+                    <div className="w-full max-w-sm mb-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                      <div className="relative h-24 cursor-pointer group" onClick={() => setIsMapModalOpen(true)}>
                         <iframe 
                           width="100%" 
                           height="100%" 
@@ -517,13 +515,13 @@ const Dashboard: React.FC = () => {
                 </>
               )}
 
-              <div className="w-full max-w-xs space-y-2 md:space-y-3">
-                <button onClick={() => handleActionSelect('entry')} className="w-full flex items-center justify-center gap-3 px-6 py-3.5 md:py-4 rounded-xl font-semibold text-base md:text-lg border-2 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/50 active:scale-[0.98] transition-all duration-200">
-                  <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <div className="w-full max-w-xs space-y-2">
+                <button onClick={() => handleActionSelect('entry')} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 md:py-3 rounded-xl font-semibold text-sm md:text-base border-2 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/50 active:scale-[0.98] transition-all duration-200">
+                  <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   Marcar Entrada
                 </button>
-                <button onClick={() => handleActionSelect('exit')} className="w-full flex items-center justify-center gap-3 px-6 py-3.5 md:py-4 rounded-xl font-semibold text-base md:text-lg border-2 border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/50 active:scale-[0.98] transition-all duration-200">
-                  <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                <button onClick={() => handleActionSelect('exit')} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 md:py-3 rounded-xl font-semibold text-sm md:text-base border-2 border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/50 active:scale-[0.98] transition-all duration-200">
+                  <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                   Marcar Salida
                 </button>
               </div>
