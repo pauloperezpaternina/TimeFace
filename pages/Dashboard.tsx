@@ -144,6 +144,8 @@ const Dashboard: React.FC = () => {
   const [collaboratorHistory, setCollaboratorHistory] = useState<{name: string, records: AttendanceRecord[]} | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number, longitude: number, name?: string } | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [progressInfo, setProgressInfo] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
     let mounted = true;
@@ -176,12 +178,26 @@ const Dashboard: React.FC = () => {
     return () => clearInterval(timer);
   }, [fetchDailyRecords, selectedDate]);
 
+  // Auto-cerrar mensaje de resultado después de 5 segundos
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    if (result.status !== 'none' && !isLoading) {
+      timeoutId = setTimeout(() => {
+        setResult({ status: 'none', message: '' });
+      }, 5000);
+    }
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [result, isLoading]);
+
   const handleActionSelect = (action: ActionType) => {
     setResult({ status: 'none', message: '' });
     setSelectedAction(action);
     setCameraActive(action);
     setCameraKey(k => k + 1);
     setCollaboratorHistory(null);
+    setProgressInfo({ current: 0, total: 0 });
   };
 
   const handleCapture = async (imageBase64: string) => {
@@ -229,15 +245,16 @@ const Dashboard: React.FC = () => {
 
       let matchFound: Collaborator | null = null;
       const BATCH_SIZE = 3; // Lotes de consultas concurrentes
+      const validCollaborators = sortedCollaborators.filter(c => c.photo);
+      setProgressInfo({ current: 0, total: validCollaborators.length });
 
-      for (let i = 0; i < sortedCollaborators.length; i += BATCH_SIZE) {
-        const batch = sortedCollaborators.slice(i, i + BATCH_SIZE);
-        const validBatch = batch.filter(c => c.photo);
+      for (let i = 0; i < validCollaborators.length; i += BATCH_SIZE) {
+        const batch = validCollaborators.slice(i, i + BATCH_SIZE);
         
-        if (validBatch.length === 0) continue;
+        if (batch.length === 0) continue;
 
         const results = await Promise.all(
-          validBatch.map(async (collaborator) => {
+          batch.map(async (collaborator) => {
             try {
               const storedImageBase64 = await imageUrlToBase64(collaborator.photo!);
               const isMatch = await compareFaces(imageBase64, storedImageBase64);
@@ -248,6 +265,8 @@ const Dashboard: React.FC = () => {
             }
           })
         );
+
+        setProgressInfo(prev => ({ ...prev, current: Math.min(prev.current + batch.length, validCollaborators.length) }));
 
         const match = results.find(r => r.isMatch);
         if (match) {
@@ -359,6 +378,7 @@ const Dashboard: React.FC = () => {
     setCameraActive(null);
     setResult({ status: 'none', message: '' });
     setCollaboratorHistory(null);
+    setProgressInfo({ current: 0, total: 0 });
   };
 
   return (
@@ -373,8 +393,37 @@ const Dashboard: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col min-h-[300px] md:min-h-[400px]">
           {isLoading ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8">
-              <Spinner size="12" />
-              <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">{result.message}</p>
+              {progressInfo.total > 0 ? (
+                <div className="relative w-24 h-24 mb-6">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle className="text-gray-200 dark:text-gray-700 stroke-current" strokeWidth="8" cx="50" cy="50" r="40" fill="transparent"></circle>
+                    <circle 
+                      className="text-blue-500 stroke-current transition-all duration-300 ease-out" 
+                      strokeWidth="8" 
+                      strokeLinecap="round" 
+                      cx="50" 
+                      cy="50" 
+                      r="40" 
+                      fill="transparent" 
+                      strokeDasharray="251.2" 
+                      strokeDashoffset={251.2 - (251.2 * progressInfo.current) / progressInfo.total}
+                    ></circle>
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-lg font-bold text-gray-700 dark:text-gray-200">
+                      {Math.round((progressInfo.current / progressInfo.total) * 100)}%
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <Spinner size="12" />
+              )}
+              <p className="mt-4 text-lg text-gray-600 dark:text-gray-300 text-center">{result.message}</p>
+              {progressInfo.total > 0 && (
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  Analizando perfiles ({progressInfo.current} de {progressInfo.total})
+                </p>
+              )}
             </div>
           ) : cameraActive ? (
             <div className="flex flex-col">
@@ -520,7 +569,12 @@ const Dashboard: React.FC = () => {
                 <div key={record.id} className="flex items-center justify-between p-3 md:p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                   <div className="flex items-center gap-3 md:gap-4">
                     {record.captured_photo_url && (
-                      <img src={record.captured_photo_url} alt="" className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover border border-gray-200 dark:border-gray-600" />
+                      <img 
+                        src={record.captured_photo_url} 
+                        alt="" 
+                        onClick={() => setSelectedPhoto(record.captured_photo_url!)}
+                        className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover border border-gray-200 dark:border-gray-600 cursor-pointer hover:opacity-80 transition-opacity" 
+                      />
                     )}
                     <div>
                       <p className="font-semibold text-sm md:text-base text-gray-900 dark:text-white">{record.collaborator_name}</p>
@@ -571,6 +625,21 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de foto */}
+      {selectedPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setSelectedPhoto(null)}>
+          <div className="relative max-w-xl w-full" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setSelectedPhoto(null)}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2 transition-colors"
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <img src={selectedPhoto} alt="Captura" className="w-full h-auto max-h-[80vh] object-contain rounded-xl shadow-2xl" />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
