@@ -4,6 +4,7 @@ import { compareFaces } from '../services/geminiService';
 import CameraCapture from '../components/CameraCapture';
 import Spinner from '../components/Spinner';
 import { AttendanceRecord, Collaborator } from '../types';
+import DatePicker from '../components/DatePicker';
 
 interface RecognitionResult {
   status: 'success' | 'error' | 'none' | 'info' | 'warning';
@@ -558,36 +559,31 @@ const Dashboard: React.FC = () => {
                 Ver todos
               </button>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-gray-100/60 dark:bg-gray-800/60 p-1 rounded-full border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-md shadow-sm">
                 <button
                   onClick={() => {
                     const d = new Date(selectedDate);
                     d.setDate(d.getDate() - 1);
                     setSelectedDate(d.toISOString().split('T')[0]);
                   }}
-                  className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors"
+                  className="p-2 rounded-full hover:bg-white dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-all duration-200 shadow-none hover:shadow-sm focus:outline-none"
                   aria-label="Día anterior"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                  <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
                 </button>
-                <input
-                  id="date-picker"
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="min-w-[140px] px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer appearance-none"
-                  style={{ fontSize: '16px' }}
-                />
+                
+                <DatePicker selectedDate={selectedDate} onChange={setSelectedDate} />
+
                 <button
                   onClick={() => {
                     const d = new Date(selectedDate);
                     d.setDate(d.getDate() + 1);
                     setSelectedDate(d.toISOString().split('T')[0]);
                   }}
-                  className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors"
+                  className="p-2 rounded-full hover:bg-white dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-all duration-200 shadow-none hover:shadow-sm focus:outline-none"
                   aria-label="Día siguiente"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                 </button>
               </div>
             )}
