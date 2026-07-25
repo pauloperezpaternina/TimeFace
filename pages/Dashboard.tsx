@@ -196,15 +196,63 @@ const Dashboard: React.FC = () => {
         return;
       }
 
+      // Algoritmo de optimización de búsqueda (Smart Sorting)
+      // Prioriza a los colaboradores que tienen más probabilidad de ser el objetivo
+      const todayEntries = new Set(
+        dailyRecords.filter(r => r.type === 'entry').map(r => r.collaborator_id)
+      );
+      const todayExits = new Set(
+        dailyRecords.filter(r => r.type === 'exit').map(r => r.collaborator_id)
+      );
+
+      const sortedCollaborators = [...collaborators].sort((a, b) => {
+        const aHasEntered = todayEntries.has(a.id);
+        const aHasExited = todayExits.has(a.id);
+        const bHasEntered = todayEntries.has(b.id);
+        const bHasExited = todayExits.has(b.id);
+
+        const aNeedsExit = aHasEntered && !aHasExited;
+        const bNeedsExit = bHasEntered && !bHasExited;
+        
+        const aNeedsEntry = !aHasEntered;
+        const bNeedsEntry = !bHasEntered;
+
+        if (selectedAction === 'exit') {
+          if (aNeedsExit && !bNeedsExit) return -1;
+          if (!aNeedsExit && bNeedsExit) return 1;
+        } else {
+          if (aNeedsEntry && !bNeedsEntry) return -1;
+          if (!aNeedsEntry && bNeedsEntry) return 1;
+        }
+        return 0;
+      });
+
       let matchFound: Collaborator | null = null;
-      for (const collaborator of collaborators) {
-        if (collaborator.photo) {
-          const storedImageBase64 = await imageUrlToBase64(collaborator.photo);
-          const isMatch = await compareFaces(imageBase64, storedImageBase64);
-          if (isMatch) {
-            matchFound = collaborator;
-            break;
-          }
+      const BATCH_SIZE = 3; // Lotes de consultas concurrentes
+
+      for (let i = 0; i < sortedCollaborators.length; i += BATCH_SIZE) {
+        const batch = sortedCollaborators.slice(i, i + BATCH_SIZE);
+        const validBatch = batch.filter(c => c.photo);
+        
+        if (validBatch.length === 0) continue;
+
+        const results = await Promise.all(
+          validBatch.map(async (collaborator) => {
+            try {
+              const storedImageBase64 = await imageUrlToBase64(collaborator.photo!);
+              const isMatch = await compareFaces(imageBase64, storedImageBase64);
+              return { collaborator, isMatch };
+            } catch (error) {
+              console.error(`Error comparando rostro para ${collaborator.name}:`, error);
+              return { collaborator, isMatch: false };
+            }
+          })
+        );
+
+        const match = results.find(r => r.isMatch);
+        if (match) {
+          matchFound = match.collaborator;
+          break;
         }
       }
 

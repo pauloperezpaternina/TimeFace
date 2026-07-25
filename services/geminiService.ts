@@ -57,7 +57,7 @@ export const compareFaces = async (liveImageBase64: string, storedImageBase64: s
             content: [
               {
                 type: 'text',
-                text: 'This image shows two faces side by side. The left face is a live camera capture and the right face is a reference photo. Determine if both faces belong to the SAME person. Ignore differences in lighting, angle, image quality, background, or facial expression. Focus only on whether the core facial features (eyes, nose, mouth shape, face structure) indicate the same person. Answer with only YES or NO.',
+                text: 'You are a highly strict biometric security system. This image shows two faces side by side. The left face is a live camera capture and the right face is a reference photo. Determine if both faces belong to EXACTLY the SAME person. Focus only on distinctive core facial features (eyes, nose shape, mouth, jawline). If they are different people, or if you are not 100% certain, you MUST answer NO. Ignore clothing or similar backgrounds. Answer with only YES or NO.',
               },
               {
                 type: 'image_url',
@@ -67,7 +67,7 @@ export const compareFaces = async (liveImageBase64: string, storedImageBase64: s
           },
         ],
         max_tokens: 10,
-        temperature: 0.5,
+        temperature: 0.0,
       }),
     });
 
