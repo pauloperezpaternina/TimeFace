@@ -16,6 +16,7 @@ const CollaboratorForm: React.FC<{
   const [position, setPosition] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
   const [shiftId, setShiftId] = useState<string>('');
+  const [pin, setPin] = useState('');
   const [shifts, setShifts] = useState<any[]>([]);
   const [showCamera, setShowCamera] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -26,11 +27,13 @@ const CollaboratorForm: React.FC<{
       setName(collaboratorToEdit.name);
       setPosition(collaboratorToEdit.position);
       setPhoto(collaboratorToEdit.photo);
+      setPin(collaboratorToEdit.pin || '');
       setShiftId(''); // We reset it so they can choose to assign a new shift
     } else {
       setName('');
       setPosition('');
       setPhoto(null);
+      setPin('');
       setShiftId('');
     }
   }, [collaboratorToEdit]);
@@ -61,9 +64,9 @@ const CollaboratorForm: React.FC<{
     try {
       let savedCollaborator;
       if (collaboratorToEdit) {
-        savedCollaborator = await dbService.updateCollaborator({ ...collaboratorToEdit, name, position, photo });
+        savedCollaborator = await dbService.updateCollaborator({ ...collaboratorToEdit, name, position, photo, pin: pin || undefined });
       } else {
-        savedCollaborator = await dbService.addCollaborator({ name, position, photo });
+        savedCollaborator = await dbService.addCollaborator({ name, position, photo, pin: pin || undefined });
       }
 
       if (shiftId) {
@@ -110,6 +113,16 @@ const CollaboratorForm: React.FC<{
       <div>
         <label htmlFor="position" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Cargo</label>
         <input type="text" id="position" value={position} onChange={e => setPosition(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
+      </div>
+      <div>
+        <label htmlFor="pin" className="block text-sm font-medium text-gray-700 dark:text-gray-200">PIN de Respaldo (opcional)</label>
+        <div className="mt-1 flex rounded-md shadow-sm">
+          <input type="text" id="pin" value={pin} onChange={e => setPin(e.target.value)} placeholder="Ej: 1234" maxLength={6} className="flex-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-l-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
+          <button type="button" onClick={() => setPin(Math.floor(1000 + Math.random() * 9000).toString())} className="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-md bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-sm hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+            Generar PIN
+          </button>
+        </div>
+        <p className="mt-1 text-xs text-gray-500">Útil si falla el reconocimiento facial.</p>
       </div>
       <div>
         <label htmlFor="shift" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Asignar Turno Fijo (Próximos 30 días)</label>

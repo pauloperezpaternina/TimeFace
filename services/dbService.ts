@@ -63,17 +63,23 @@ class DbService {
 
   async addCollaborator(collaborator: Omit<Collaborator, 'id'>): Promise<Collaborator> {
     const id = generateId();
+    // Try to ensure pin column exists before inserting (migration)
+    try { await turso.execute('ALTER TABLE collaborators ADD COLUMN pin TEXT'); } catch(e) {}
+    
     await turso.execute({
-      sql: 'INSERT INTO collaborators (id, name, position, photo, role_id) VALUES (?, ?, ?, ?, ?)',
-      args: [id, collaborator.name, collaborator.position, collaborator.photo, collaborator.role_id || null],
+      sql: 'INSERT INTO collaborators (id, name, position, photo, role_id, pin) VALUES (?, ?, ?, ?, ?, ?)',
+      args: [id, collaborator.name, collaborator.position, collaborator.photo, collaborator.role_id || null, collaborator.pin || null],
     });
     return { id, ...collaborator };
   }
 
   async updateCollaborator(collaborator: Collaborator): Promise<Collaborator> {
+    // Try to ensure pin column exists before updating (migration)
+    try { await turso.execute('ALTER TABLE collaborators ADD COLUMN pin TEXT'); } catch(e) {}
+
     await turso.execute({
-      sql: 'UPDATE collaborators SET name = ?, position = ?, photo = ?, role_id = ? WHERE id = ?',
-      args: [collaborator.name, collaborator.position, collaborator.photo, collaborator.role_id || null, collaborator.id],
+      sql: 'UPDATE collaborators SET name = ?, position = ?, photo = ?, role_id = ?, pin = ? WHERE id = ?',
+      args: [collaborator.name, collaborator.position, collaborator.photo, collaborator.role_id || null, collaborator.pin || null, collaborator.id],
     });
     return collaborator;
   }

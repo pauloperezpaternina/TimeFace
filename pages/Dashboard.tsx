@@ -148,6 +148,12 @@ const Dashboard: React.FC = () => {
   const [cameraKey, setCameraKey] = useState(0);
   const [collaboratorHistory, setCollaboratorHistory] = useState<{name: string, records: AttendanceRecord[]} | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number, longitude: number, name?: string } | null>(null);
+  
+  // PIN Fallback state
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [selectedCollaboratorId, setSelectedCollaboratorId] = useState('');
+  const [allCollaborators, setAllCollaborators] = useState<Collaborator[]>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
@@ -283,10 +289,24 @@ const Dashboard: React.FC = () => {
       }
 
       if (!matchFound) {
-        setResult({ status: 'error', message: 'No estás registrado como colaborador.' });
+        setResult({ status: 'error', message: 'No estás registrado o la cámara no te reconoció.' });
+        setAllCollaborators(collaborators); // Save list for PIN fallback
         setIsLoading(false);
         return;
       }
+
+      await processAttendance(matchFound, selectedAction, imageBase64);
+    } catch (error) {
+      console.error("Error al registrar:", error);
+      setResult({ status: 'error', message: `Error: ${error instanceof Error ? error.message : 'desconocido'}` });
+      setIsLoading(false);
+      setCameraActive(null);
+    }
+  };
+
+  const processAttendance = async (matchFound: Collaborator, action: ActionType, imageBase64?: string) => {
+    setIsLoading(true);
+    try {
 
       const history = await dbService.getAttendanceRecordsByCollaboratorId(matchFound.id);
       setCollaboratorHistory({ name: matchFound.name, records: history });
@@ -303,7 +323,7 @@ const Dashboard: React.FC = () => {
       const lastRecord = await dbService.getLastRecordForCollaborator(matchFound.id);
       const expectedAction = lastRecord?.type === 'entry' ? 'exit' : 'entry';
 
-      if (selectedAction !== expectedAction) {
+      if (action !== expectedAction) {
         setResult({
           status: 'error',
           message: `Acción inválida. Tu próxima acción debe ser ${expectedAction === 'entry' ? 'entrada' : 'salida'}.`
@@ -339,18 +359,18 @@ const Dashboard: React.FC = () => {
         collaborator_id: matchFound.id,
         collaborator_name: matchFound.name,
         timestamp: new Date().toISOString(),
-        type: selectedAction,
+        type: action,
         latitude: finalLocation?.latitude,
         longitude: finalLocation?.longitude,
         location_name: finalLocation?.name,
-      }, imageBase64);
+      }, imageBase64 || ''); // Si es por PIN, enviamos empty string
 
-      const newStatus = selectedAction === 'entry' ? 'present' : schedule.status;
+      const newStatus = action === 'entry' ? 'present' : schedule.status;
       await dbService.updateSchedule({ ...schedule, status: newStatus });
 
       setResult({
         status: 'success',
-        message: `Registro de ${selectedAction === 'entry' ? 'entrada' : 'salida'} exitoso para ${matchFound.name}.`
+        message: `Registro de ${action === 'entry' ? 'entrada' : 'salida'} exitoso para ${matchFound.name}.`
       });
       setCameraActive(null);
 
@@ -379,6 +399,25 @@ const Dashboard: React.FC = () => {
       setIsLoading(false);
       setCameraActive(null);
     }
+  };
+
+  const handlePinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCollaboratorId || !pinInput) {
+      alert("Por favor selecciona tu nombre e ingresa tu PIN.");
+      return;
+    }
+    const collaborator = allCollaborators.find(c => c.id === selectedCollaboratorId);
+    if (!collaborator) return;
+    
+    if (collaborator.pin !== pinInput) {
+      alert("El PIN ingresado es incorrecto.");
+      return;
+    }
+    
+    setShowPinModal(false);
+    setPinInput('');
+    await processAttendance(collaborator, selectedAction);
   };
 
   const resetCamera = () => {
@@ -483,6 +522,14 @@ const Dashboard: React.FC = () => {
                     <div>
                       <p className="font-semibold">{result.status === 'success' ? 'Éxito' : result.status === 'error' ? 'Error' : result.status === 'warning' ? 'Advertencia' : 'Info'}</p>
                       <p className="text-sm mt-0.5 opacity-90">{result.message}</p>
+                      {result.status === 'error' && allCollaborators.length > 0 && (
+                        <button 
+                          onClick={() => setShowPinModal(true)}
+                          className="mt-3 px-4 py-1.5 bg-white text-red-700 hover:bg-red-50 text-sm font-semibold rounded-lg shadow-sm border border-red-200"
+                        >
+                          ¿No te reconoce? Usar PIN de Respaldo
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -701,6 +748,66 @@ const Dashboard: React.FC = () => {
                  Abrir en Google Maps <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                </a>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PIN Fallback Modal */}
+      {showPinModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setShowPinModal(false)}>
+          <div className="relative max-w-sm w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+            <div className="mb-5 text-center">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">PIN de Respaldo</h3>
+              <p className="text-sm text-gray-500 mt-1">Usa tu PIN si la cámara falla.</p>
+            </div>
+            
+            <form onSubmit={handlePinSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Selecciona tu nombre</label>
+                <select 
+                  required
+                  value={selectedCollaboratorId}
+                  onChange={e => setSelectedCollaboratorId(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="">-- Elige un colaborador --</option>
+                  {allCollaborators.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tu PIN</label>
+                <input 
+                  type="password" 
+                  required
+                  value={pinInput}
+                  onChange={e => setPinInput(e.target.value)}
+                  placeholder="****"
+                  maxLength={6}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-center tracking-widest text-lg font-bold"
+                />
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button 
+                  type="button" 
+                  onClick={() => setShowPinModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-medium rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isLoading}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isLoading ? 'Verificando...' : 'Entrar'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

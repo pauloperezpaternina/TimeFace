@@ -12,6 +12,7 @@ export interface Collaborator {
   photo: string;
   role_id?: string;
   document?: string;
+  pin?: string;
 }
 
 export type AttendanceType = 'entry' | 'exit';
