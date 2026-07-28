@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { dbService } from '../services/dbService';
 import { compareFaces } from '../services/geminiService';
 import CameraCapture from '../components/CameraCapture';
+import { speak } from '../src/utils/speech';
 import Spinner from '../components/Spinner';
 import { AttendanceRecord, Collaborator } from '../types';
 import DatePicker from '../components/DatePicker';
@@ -204,6 +205,13 @@ const Dashboard: React.FC = () => {
     };
   }, [result, isLoading]);
 
+  // Voice feedback para cualquier cambio en result
+  useEffect(() => {
+    if (result.status !== 'none' && result.message) {
+      speak(result.message);
+    }
+  }, [result]);
+
   const handleActionSelect = (action: ActionType) => {
     setResult({ status: 'none', message: '' });
     setSelectedAction(action);
@@ -211,6 +219,7 @@ const Dashboard: React.FC = () => {
     setCameraKey(k => k + 1);
     setCollaboratorHistory(null);
     setProgressInfo({ current: 0, total: 0 });
+    speak(`Por favor, mire a la cámara para registrar su ${action === 'entry' ? 'entrada' : 'salida'}.`);
   };
 
   const handleCapture = async (imageBase64: string) => {
