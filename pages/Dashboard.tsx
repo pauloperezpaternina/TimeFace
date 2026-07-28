@@ -274,6 +274,9 @@ const Dashboard: React.FC = () => {
               return { collaborator, isMatch };
             } catch (error) {
               console.error(`Error comparando rostro para ${collaborator.name}:`, error);
+              if (error instanceof Error && error.message === 'OBSCURED_FACE') {
+                throw error;
+              }
               return { collaborator, isMatch: false };
             }
           })
@@ -298,9 +301,13 @@ const Dashboard: React.FC = () => {
       await processAttendance(matchFound, selectedAction, imageBase64);
     } catch (error) {
       console.error("Error al registrar:", error);
-      setResult({ status: 'error', message: `Error: ${error instanceof Error ? error.message : 'desconocido'}` });
+      if (error instanceof Error && error.message === 'OBSCURED_FACE') {
+        setResult({ status: 'warning', message: 'No se pudo identificar el rostro. Por favor, retírese gafas oscuras, mascarillas o elementos que lo oculten e intente de nuevo.' });
+      } else {
+        setResult({ status: 'error', message: `Error: ${error instanceof Error ? error.message : 'desconocido'}` });
+        setCameraActive(null);
+      }
       setIsLoading(false);
-      setCameraActive(null);
     }
   };
 

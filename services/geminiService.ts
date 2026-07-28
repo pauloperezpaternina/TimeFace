@@ -57,7 +57,7 @@ export const compareFaces = async (liveImageBase64: string, storedImageBase64: s
             content: [
               {
                 type: 'text',
-                text: 'You are a highly strict biometric security system. This image shows two faces side by side. The left face is a live camera capture and the right face is a reference photo. Determine if both faces belong to EXACTLY the SAME person. Focus only on distinctive core facial features (eyes, nose shape, mouth, jawline). If they are different people, or if you are not 100% certain, you MUST answer NO. Ignore clothing or similar backgrounds. Answer with only YES or NO.',
+                text: 'You are an advanced biometric facial recognition system. This image shows two faces side by side: left is a live capture, right is a reference photo. Your task is to determine if both faces belong to EXACTLY the SAME person.\n\nCRITICAL INSTRUCTIONS:\n1. IGNORE LIGHTING DIFFERENCES: The lighting, shadows, exposure, and perceived skin tone may differ significantly between the two photos. Do not let lighting differences cause a false negative.\n2. IGNORE HEADWEAR & ACCESSORIES: The person might be wearing a helmet or hat. Ignore anything outside the core facial structure.\n3. FOCUS ONLY ON STRUCTURAL FEATURES: Compare the geometry and shape of the eyes, nose, mouth, chin, and forehead.\n4. OBSCURED FACES: If the core facial structure (eyes, nose, mouth) is significantly blocked by dark glasses, masks, or other objects making it impossible to identify, answer OBSCURED.\n5. If the structural facial features match, answer YES. If they are structurally different people, answer NO. Answer with ONLY YES, NO, or OBSCURED.',
               },
               {
                 type: 'image_url',
@@ -81,6 +81,11 @@ export const compareFaces = async (liveImageBase64: string, storedImageBase64: s
     console.log('✅ NVIDIA API response:', data);
     const text = (data.choices?.[0]?.message?.content || '').trim().toUpperCase();
     console.log('🗣️ Respuesta del modelo extraída:', text);
+    
+    if (/\bOBSCURED\b/.test(text)) {
+      throw new Error('OBSCURED_FACE');
+    }
+
     const isMatch = /\bYES\b/.test(text);
     console.log('¿Es coincidencia (isMatch)?:', isMatch);
     return isMatch;
@@ -88,6 +93,7 @@ export const compareFaces = async (liveImageBase64: string, storedImageBase64: s
   } catch (error) {
     console.error('Error al comparar rostros con NVIDIA:', error);
     if (error instanceof Error) {
+      if (error.message === 'OBSCURED_FACE') throw error;
       throw new Error(`Error en el reconocimiento facial: ${error.message}`);
     }
     throw new Error('Ocurrió un error desconocido durante el reconocimiento facial.');
