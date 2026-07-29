@@ -5,9 +5,10 @@ interface CameraCaptureProps {
   onCapture: (imageBase64: string) => void;
   width?: number;
   height?: number;
+  customOverlay?: React.ReactNode;
 }
 
-const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, width = 640, height = 480 }) => {
+const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, width = 640, height = 480, customOverlay }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Use a ref to track the stream for reliable cleanup in useEffect
@@ -97,6 +98,12 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, width = 640, h
       </div>
       <div className="relative w-full max-w-md bg-gray-900 rounded-lg overflow-hidden shadow-lg min-h-[240px] flex items-center justify-center">
         
+        {customOverlay && (
+          <div className="absolute top-3 left-3 z-30 pointer-events-none">
+            {customOverlay}
+          </div>
+        )}
+
         {capturedImage ? (
           <div className="relative w-full h-full">
             <img src={capturedImage} alt="Captura temporal" className={`w-full h-auto ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`} />

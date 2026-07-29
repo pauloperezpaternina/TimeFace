@@ -157,6 +157,7 @@ const Dashboard: React.FC = () => {
   const [collaboratorSearch, setCollaboratorSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [allCollaborators, setAllCollaborators] = useState<Collaborator[]>([]);
+  const [pendingCorrection, setPendingCorrection] = useState<{ collaborator: Collaborator, expectedAction: ActionType, imageBase64?: string } | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
@@ -217,6 +218,7 @@ const Dashboard: React.FC = () => {
 
   const handleActionSelect = (action: ActionType) => {
     setResult({ status: 'none', message: '' });
+    setPendingCorrection(null);
     setSelectedAction(action);
     setCameraActive(action);
     setCameraKey(k => k + 1);
@@ -362,6 +364,7 @@ const Dashboard: React.FC = () => {
           status: 'warning',
           message: `Acción inválida para ${matchFound.name}. Tu próxima acción debe ser ${expectedAction === 'entry' ? 'entrada' : 'salida'}.`
         });
+        setPendingCorrection({ collaborator: matchFound, expectedAction, imageBase64 });
         setIsLoading(false);
         return;
       }
@@ -457,6 +460,7 @@ const Dashboard: React.FC = () => {
   const resetCamera = () => {
     setCameraActive(null);
     setResult({ status: 'none', message: '' });
+    setPendingCorrection(null);
     setCollaboratorHistory(null);
     setProgressInfo({ current: 0, total: 0 });
   };
@@ -521,14 +525,20 @@ const Dashboard: React.FC = () => {
             </div>
           ) : cameraActive ? (
             <div className="flex flex-col">
-              <div className="relative">
-                <div className="absolute top-4 left-0 right-0 flex justify-center z-10 pointer-events-none">
-                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold shadow-lg ${cameraActive === 'entry' ? 'bg-green-600 text-white' : 'bg-orange-600 text-white'}`}>
-                    {cameraActive === 'entry' ? 'Registrando Entrada' : 'Registrando Salida'}
-                  </div>
-                </div>
-                <div className="flex justify-center w-full">
-                  <CameraCapture key={cameraKey} onCapture={handleCapture} width={480} height={360} />
+              <div className="flex flex-col items-center pt-2 w-full">
+                <div className="flex justify-center w-full px-2">
+                  <CameraCapture 
+                    key={cameraKey} 
+                    onCapture={handleCapture} 
+                    width={480} 
+                    height={360} 
+                    customOverlay={
+                      <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg backdrop-blur-sm ${cameraActive === 'entry' ? 'bg-green-600/90 text-white' : 'bg-orange-600/90 text-white'}`}>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={cameraActive === 'entry' ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" : "M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"} /></svg>
+                        {cameraActive === 'entry' ? 'Entrada' : 'Salida'}
+                      </div>
+                    }
+                  />
                 </div>
               </div>
               <div className="flex justify-center px-4 pb-4 pt-2">
@@ -545,7 +555,7 @@ const Dashboard: React.FC = () => {
               {result.status !== 'none' && (
                 <div className={`w-full max-w-md p-4 rounded-xl border-l-4 relative pr-10 ${result.status === 'success' ? 'bg-green-50 border-green-500 text-green-800 dark:bg-green-900/20 dark:border-green-500 dark:text-green-300' : result.status === 'error' ? 'bg-red-50 border-red-500 text-red-800 dark:bg-red-900/20 dark:border-red-500 dark:text-red-300' : result.status === 'warning' ? 'bg-yellow-50 border-yellow-500 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-500 dark:text-yellow-300' : 'bg-blue-50 border-blue-500 text-blue-800 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'}`}>
                   <button 
-                    onClick={() => setResult({status: 'none', message: ''})} 
+                    onClick={() => { setResult({status: 'none', message: ''}); setPendingCorrection(null); }} 
                     className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -568,6 +578,21 @@ const Dashboard: React.FC = () => {
                           className="mt-3 px-4 py-1.5 bg-white text-red-700 hover:bg-red-50 text-sm font-semibold rounded-lg shadow-sm border border-red-200"
                         >
                           ¿No te reconoce? Usar PIN de Respaldo
+                        </button>
+                      )}
+                      {result.status === 'warning' && pendingCorrection && (
+                        <button 
+                          onClick={() => {
+                            setResult({ status: 'none', message: '' });
+                            const pc = pendingCorrection;
+                            setPendingCorrection(null);
+                            setSelectedAction(pc.expectedAction); // Actualizamos la acción para que el UI cuadre
+                            processAttendance(pc.collaborator, pc.expectedAction, pc.imageBase64);
+                          }}
+                          className="mt-3 px-4 py-1.5 bg-white text-yellow-700 hover:bg-yellow-50 text-sm font-semibold rounded-lg shadow-sm border border-yellow-200 w-full flex items-center justify-center gap-2 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                          Sí, marcar {pendingCorrection.expectedAction === 'entry' ? 'Entrada' : 'Salida'} ahora
                         </button>
                       )}
                     </div>
