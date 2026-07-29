@@ -5,8 +5,10 @@ import ManageShifts from './admin/ManageShifts';
 import ManageShiftPatterns from './admin/ManageShiftPatterns';
 import AttendanceCorrections from './admin/AttendanceCorrections';
 import ManageSettings from './admin/ManageSettings';
+import WellnessDashboard from './admin/WellnessDashboard';
+import HRVirtualAssistant from './admin/HRVirtualAssistant';
 
-type AdminTab = 'users' | 'roles' | 'shifts' | 'patterns' | 'corrections' | 'settings';
+type AdminTab = 'users' | 'roles' | 'shifts' | 'patterns' | 'corrections' | 'settings' | 'wellness' | 'hr-assistant';
 
 const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
@@ -25,6 +27,10 @@ const Admin: React.FC = () => {
         return <AttendanceCorrections />;
       case 'settings':
         return <ManageSettings />;
+      case 'wellness':
+        return <WellnessDashboard />;
+      case 'hr-assistant':
+        return <HRVirtualAssistant />;
       default:
         return <ManageUsers />;
     }
@@ -54,6 +60,8 @@ const Admin: React.FC = () => {
         <TabButton tabName="shifts" label="Gestionar Turnos" />
         <TabButton tabName="patterns" label="Gestionar Patrones" />
         <TabButton tabName="corrections" label="Correcciones" />
+        <TabButton tabName="wellness" label="🩺 Bienestar y Seguridad (IA)" />
+        <TabButton tabName="hr-assistant" label="🤖 Asistente RRHH (IA)" />
         <TabButton tabName="settings" label="Configuración" />
       </div>
       <div>{renderContent()}</div>

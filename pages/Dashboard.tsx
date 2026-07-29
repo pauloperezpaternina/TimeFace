@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { dbService } from '../services/dbService';
 import { compareFaces } from '../services/faceRecognitionService';
+import { analyzeAttendanceImage } from '../services/geminiService';
 import CameraCapture from '../components/CameraCapture';
 import { speak } from '../src/utils/speech';
 import Spinner from '../components/Spinner';
@@ -402,6 +403,14 @@ const Dashboard: React.FC = () => {
         location_name: finalLocation?.name,
       }, imageBase64 || ''); // Si es por PIN, enviamos empty string
 
+      // Lanzar análisis de IA avanzado en segundo plano (no bloqueante)
+      if (imageBase64) {
+        analyzeAttendanceImage(imageBase64).then((analysis) => {
+          console.log('✅ Análisis IA completado:', analysis);
+          dbService.updateAttendanceRecordAIStatus(newRecord.id, analysis.spoof, analysis.wellness, analysis.reason).catch(console.error);
+        }).catch(err => console.error('Error en análisis IA en segundo plano:', err));
+      }
+
       const newStatus = action === 'entry' ? 'present' : schedule.status;
       await dbService.updateSchedule({ ...schedule, status: newStatus });
 
@@ -469,7 +478,13 @@ const Dashboard: React.FC = () => {
     <div className="container mx-auto space-y-4 md:space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-center mb-2 md:mb-4 gap-4">
         <div className="text-center md:text-left">
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Control de Asistencia</h1>
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            Control de Asistencia
+            <span className="hidden md:inline-flex bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-300">
+              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.3 1.046A12.014 12.014 0 0010.5 1h-1a12.014 12.014 0 00-.8.046l-.5.1a12 12 0 00-7.1 7.1l-.1.5a12.014 12.014 0 00-.046.8v1c0 .28.016.55.046.8l.1.5a12 12 0 007.1 7.1l.5.1c.25.03.52.046.8.046h1c.28 0 .55-.016.8-.046l.5-.1a12 12 0 007.1-7.1l.1-.5c.03-.25.046-.52.046-.8v-1c0-.28-.016-.55-.046-.8l-.1-.5a12 12 0 00-7.1-7.1l-.5-.1a12.014 12.014 0 00-.8-.046zM10 4a6 6 0 100 12 6 6 0 000-12zM8 9a1 1 0 100-2 1 1 0 000 2zm6-1a1 1 0 11-2 0 1 1 0 012 0zm-3 6a3.5 3.5 0 01-3.32-2.31 1 1 0 111.89-.65A1.5 1.5 0 0011 12a1 1 0 110 2z" clipRule="evenodd"></path></svg>
+              Protegido por IA
+            </span>
+          </h1>
           <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">{currentTime.toLocaleString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
         </div>
         <div className="flex items-center gap-3">

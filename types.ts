@@ -27,6 +27,9 @@ export interface AttendanceRecord {
   latitude?: number;
   longitude?: number;
   location_name?: string;
+  spoof_status?: 'OK' | 'SPOOF' | 'UNCHECKED';
+  wellness_status?: 'NORMAL' | 'FATIGUED' | 'STRESSED' | 'HAPPY' | 'UNCHECKED';
+  ai_analysis_reason?: string;
 }
 
 export interface Role {

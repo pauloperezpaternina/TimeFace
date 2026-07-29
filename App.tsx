@@ -9,9 +9,11 @@ import Login from './pages/Login';
 import VisitorRegistration from './pages/VisitorRegistration';
 import Locations from './pages/Locations';
 import UpdatePhoto from './pages/UpdatePhoto';
+import WellnessDashboard from './pages/admin/WellnessDashboard';
+import HRVirtualAssistant from './pages/admin/HRVirtualAssistant';
 import { User } from './types';
 
-export type Page = 'dashboard' | 'scheduling' | 'collaborators' | 'admin' | 'reports' | 'login' | 'visitor-registration' | 'locations' | 'update-photo';
+export type Page = 'dashboard' | 'scheduling' | 'collaborators' | 'admin' | 'reports' | 'login' | 'visitor-registration' | 'locations' | 'update-photo' | 'wellness-dashboard' | 'hr-assistant';
 
 const App: React.FC = () => {
   const urlPage = new URLSearchParams(window.location.search).get('page') as Page;
@@ -29,7 +31,7 @@ const App: React.FC = () => {
     setCurrentPage('dashboard');
   };
 
-  const protectedPages: Page[] = ['scheduling', 'collaborators', 'admin', 'reports', 'locations'];
+  const protectedPages: Page[] = ['scheduling', 'collaborators', 'admin', 'reports', 'locations', 'wellness-dashboard', 'hr-assistant'];
   const isProtectedPage = protectedPages.includes(currentPage);
 
   const renderContent = () => {
@@ -56,6 +58,10 @@ const App: React.FC = () => {
         return <Locations />;
       case 'reports':
         return <Reports />;
+      case 'wellness-dashboard':
+        return <WellnessDashboard />;
+      case 'hr-assistant':
+        return <HRVirtualAssistant />;
       // If user is already logged in and tries to go to 'login', redirect to dashboard.
       case 'login':
         return <Dashboard />;

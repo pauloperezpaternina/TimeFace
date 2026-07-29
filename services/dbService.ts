@@ -149,6 +149,13 @@ class DbService {
     return newRecord as AttendanceRecord;
   }
 
+  async updateAttendanceRecordAIStatus(recordId: string, spoofStatus: string, wellnessStatus: string, reason: string): Promise<void> {
+    await turso.execute({
+      sql: 'UPDATE attendance_records SET spoof_status = ?, wellness_status = ?, ai_analysis_reason = ? WHERE id = ?',
+      args: [spoofStatus, wellnessStatus, reason, recordId]
+    });
+  }
+
   async getLastRecordForCollaborator(collaboratorId: string): Promise<AttendanceRecord | null> {
     const rs = await turso.execute({
       sql: 'SELECT * FROM attendance_records WHERE collaborator_id = ? ORDER BY timestamp DESC LIMIT 1',
@@ -512,7 +519,7 @@ const saveMockVisit = (visit: Visit) => {
     const visits = getMockVisits();
     visits.push(visit);
     localStorage.setItem(MOCK_VISITS_KEY, JSON.stringify(visits));
-  } catch { /* ignore */ }
-};
+  } catch { /* ignore */  }
+}
 
 export const dbService = new DbService();
