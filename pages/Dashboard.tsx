@@ -359,8 +359,8 @@ const Dashboard: React.FC = () => {
 
       if (action !== expectedAction) {
         setResult({
-          status: 'error',
-          message: `Acción inválida. Tu próxima acción debe ser ${expectedAction === 'entry' ? 'entrada' : 'salida'}.`
+          status: 'warning',
+          message: `Acción inválida para ${matchFound.name}. Tu próxima acción debe ser ${expectedAction === 'entry' ? 'entrada' : 'salida'}.`
         });
         setIsLoading(false);
         return;
@@ -371,8 +371,8 @@ const Dashboard: React.FC = () => {
         const todayDate = getLocalDateString(new Date());
         if (lastRecordDate !== todayDate) {
           setResult({
-            status: 'error',
-            message: `Acceso bloqueado. Tienes un turno abierto del día ${lastRecordDate}. Contacta a RRHH.`
+            status: 'warning',
+            message: `Acceso bloqueado para ${matchFound.name}. Tienes un turno abierto del día ${lastRecordDate}. Contacta a RRHH.`
           });
           setIsLoading(false);
           return;
