@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { dbService } from '../services/dbService';
-import { compareFaces } from '../services/geminiService';
+import { compareFaces } from '../services/faceRecognitionService';
 import CameraCapture from '../components/CameraCapture';
 import { speak } from '../src/utils/speech';
 import Spinner from '../components/Spinner';
