@@ -154,12 +154,15 @@ const Dashboard: React.FC = () => {
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [selectedCollaboratorId, setSelectedCollaboratorId] = useState('');
+  const [collaboratorSearch, setCollaboratorSearch] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
   const [allCollaborators, setAllCollaborators] = useState<Collaborator[]>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [progressInfo, setProgressInfo] = useState({ current: 0, total: 0 });
   const [showRecords, setShowRecords] = useState(true);
+  const [failedAttempts, setFailedAttempts] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -192,13 +195,13 @@ const Dashboard: React.FC = () => {
     return () => clearInterval(timer);
   }, [fetchDailyRecords, selectedDate]);
 
-  // Auto-cerrar mensaje de resultado después de 5 segundos
+  // Auto-cerrar mensaje de resultado después de 20 segundos
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     if (result.status !== 'none' && !isLoading) {
       timeoutId = setTimeout(() => {
         setResult({ status: 'none', message: '' });
-      }, 5000);
+      }, 20000);
     }
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
@@ -228,6 +231,7 @@ const Dashboard: React.FC = () => {
 
     try {
       const collaborators = await dbService.getCollaborators();
+      setAllCollaborators(collaborators); // Guardamos para PIN de respaldo si es necesario
       if (collaborators.length === 0) {
         setResult({ status: 'error', message: 'No hay colaboradores registrados para comparar.' });
         setIsLoading(false);
@@ -301,22 +305,36 @@ const Dashboard: React.FC = () => {
       }
 
       if (!matchFound) {
-        setResult({ status: 'error', message: 'No estás registrado o la cámara no te reconoció.' });
-        setAllCollaborators(collaborators); // Save list for PIN fallback
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
+        setResult({ status: 'error', message: `No estás registrado o la cámara no te reconoció. (Intento ${newAttempts}/2)` });
         setIsLoading(false);
+        if (newAttempts >= 2) {
+          setShowPinModal(true);
+          setFailedAttempts(0);
+        }
         return;
       }
 
+      setFailedAttempts(0);
       await processAttendance(matchFound, selectedAction, imageBase64);
     } catch (error) {
       console.error("Error al registrar:", error);
+      const newAttempts = failedAttempts + 1;
+      setFailedAttempts(newAttempts);
+      
       if (error instanceof Error && error.message === 'OBSCURED_FACE') {
-        setResult({ status: 'warning', message: 'No se pudo identificar el rostro. Por favor, retírese gafas oscuras, mascarillas o elementos que lo oculten e intente de nuevo.' });
+        setResult({ status: 'warning', message: `No se pudo identificar el rostro. Por favor, retírese gafas oscuras, mascarillas o elementos que lo oculten e intente de nuevo. (Intento ${newAttempts}/2)` });
       } else {
-        setResult({ status: 'error', message: `Error: ${error instanceof Error ? error.message : 'desconocido'}` });
-        setCameraActive(null);
+        setResult({ status: 'error', message: `Error: ${error instanceof Error ? error.message : 'desconocido'} (Intento ${newAttempts}/2)` });
       }
       setIsLoading(false);
+      
+      if (newAttempts >= 2) {
+        setShowPinModal(true);
+        setFailedAttempts(0);
+        setCameraActive(null);
+      }
     }
   };
 
@@ -420,7 +438,7 @@ const Dashboard: React.FC = () => {
   const handlePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCollaboratorId || !pinInput) {
-      alert("Por favor selecciona tu nombre e ingresa tu PIN.");
+      alert("Por favor busca y selecciona tu nombre de la lista, e ingresa tu PIN.");
       return;
     }
     const collaborator = allCollaborators.find(c => c.id === selectedCollaboratorId);
@@ -525,7 +543,13 @@ const Dashboard: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
               {result.status !== 'none' && (
-                <div className={`w-full max-w-md p-4 rounded-xl border-l-4 ${result.status === 'success' ? 'bg-green-50 border-green-500 text-green-800 dark:bg-green-900/20 dark:border-green-500 dark:text-green-300' : result.status === 'error' ? 'bg-red-50 border-red-500 text-red-800 dark:bg-red-900/20 dark:border-red-500 dark:text-red-300' : result.status === 'warning' ? 'bg-yellow-50 border-yellow-500 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-500 dark:text-yellow-300' : 'bg-blue-50 border-blue-500 text-blue-800 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'}`}>
+                <div className={`w-full max-w-md p-4 rounded-xl border-l-4 relative pr-10 ${result.status === 'success' ? 'bg-green-50 border-green-500 text-green-800 dark:bg-green-900/20 dark:border-green-500 dark:text-green-300' : result.status === 'error' ? 'bg-red-50 border-red-500 text-red-800 dark:bg-red-900/20 dark:border-red-500 dark:text-red-300' : result.status === 'warning' ? 'bg-yellow-50 border-yellow-500 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-500 dark:text-yellow-300' : 'bg-blue-50 border-blue-500 text-blue-800 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'}`}>
+                  <button 
+                    onClick={() => setResult({status: 'none', message: ''})} 
+                    className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 mt-0.5">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
@@ -781,19 +805,43 @@ const Dashboard: React.FC = () => {
             </div>
             
             <form onSubmit={handlePinSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Selecciona tu nombre</label>
-                <select 
-                  required
-                  value={selectedCollaboratorId}
-                  onChange={e => setSelectedCollaboratorId(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="">-- Elige un colaborador --</option>
-                  {allCollaborators.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Busca tu nombre</label>
+                <input
+                  type="text"
+                  placeholder="Escribe para buscar..."
+                  value={collaboratorSearch}
+                  onFocus={() => setShowDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                  onChange={e => {
+                    setCollaboratorSearch(e.target.value);
+                    setShowDropdown(true);
+                    setSelectedCollaboratorId('');
+                  }}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white"
+                />
+                {showDropdown && (
+                  <ul className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {allCollaborators
+                      .filter(c => c.name.toLowerCase().includes(collaboratorSearch.toLowerCase()))
+                      .map(c => (
+                        <li 
+                          key={c.id} 
+                          className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer text-gray-900 dark:text-white text-sm border-b border-gray-100 dark:border-gray-700 last:border-0"
+                          onClick={() => {
+                            setSelectedCollaboratorId(c.id);
+                            setCollaboratorSearch(c.name);
+                            setShowDropdown(false);
+                          }}
+                        >
+                          {c.name}
+                        </li>
+                    ))}
+                    {allCollaborators.filter(c => c.name.toLowerCase().includes(collaboratorSearch.toLowerCase())).length === 0 && (
+                      <li className="px-3 py-2 text-gray-500 dark:text-gray-400 text-sm">No se encontraron resultados</li>
+                    )}
+                  </ul>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tu PIN</label>
