@@ -75,6 +75,56 @@ export const extractFaceFromImage = async (imageBase64: string): Promise<string>
   }
 };
 
+const descriptorCache = new Map<string, Float32Array>();
+
+export const getFaceDescriptor = async (imageBase64: string): Promise<Float32Array> => {
+  if (!modelsLoaded) {
+    await loadModels();
+  }
+
+  const img = await createImageFromBase64(imageBase64);
+  const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 });
+  const detection = await faceapi.detectSingleFace(img, options)
+    .withFaceLandmarks()
+    .withFaceDescriptor();
+
+  if (!detection) {
+    throw new Error('OBSCURED_FACE');
+  }
+
+  return detection.descriptor;
+};
+
+export const getStoredFaceDescriptor = async (imageUrl: string): Promise<Float32Array> => {
+  if (descriptorCache.has(imageUrl)) {
+    return descriptorCache.get(imageUrl)!;
+  }
+
+  try {
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    const descriptor = await getFaceDescriptor(base64);
+    descriptorCache.set(imageUrl, descriptor);
+    return descriptor;
+  } catch (error) {
+    console.error('Error procesando imagen almacenada:', error);
+    throw new Error('OBSCURED_FACE'); // Mismo error para ignorarlo en el loop
+  }
+};
+
+export const compareDescriptors = (desc1: Float32Array, desc2: Float32Array): boolean => {
+  const distance = faceapi.euclideanDistance(desc1, desc2);
+  const THRESHOLD = 0.58;
+  return distance <= THRESHOLD;
+};
+
 export const compareFaces = async (liveImageBase64: string, storedImageBase64: string): Promise<boolean> => {
   if (!modelsLoaded) {
     await loadModels();

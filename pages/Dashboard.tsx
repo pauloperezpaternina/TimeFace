@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { dbService } from '../services/dbService';
-import { compareFaces, extractFaceFromImage } from '../services/faceRecognitionService';
+import { compareFaces, extractFaceFromImage, getFaceDescriptor, getStoredFaceDescriptor, compareDescriptors } from '../services/faceRecognitionService';
 import { analyzeAttendanceImage } from '../services/geminiService';
 import CameraCapture from '../components/CameraCapture';
 import { speak } from '../src/utils/speech';
@@ -285,40 +285,46 @@ const Dashboard: React.FC = () => {
       });
 
       let matchFound: Collaborator | null = null;
-      const BATCH_SIZE = 3; // Lotes de consultas concurrentes
+      const BATCH_SIZE = 5; // Aumentamos el lote porque ahora es más rápido
       const validCollaborators = sortedCollaborators.filter(c => c.photo);
       setProgressInfo({ current: 0, total: validCollaborators.length });
 
-      for (let i = 0; i < validCollaborators.length; i += BATCH_SIZE) {
-        const batch = validCollaborators.slice(i, i + BATCH_SIZE);
-        
-        if (batch.length === 0) continue;
+      try {
+        // 1. Extraemos el descriptor de la imagen en vivo SOLO UNA VEZ
+        const liveDescriptor = await getFaceDescriptor(imageBase64);
 
-        const results = await Promise.all(
-          batch.map(async (collaborator) => {
-            try {
-              const storedImageBase64 = await imageUrlToBase64(collaborator.photo!);
-              // Pasamos la imagen completa en vivo para que la IA tenga contexto de fondo y detecte bien el rostro.
-              // Solo si hay coincidencia, guardaremos la versión recortada.
-              const isMatch = await compareFaces(imageBase64, storedImageBase64);
-              return { collaborator, isMatch };
-            } catch (error) {
-              console.error(`Error comparando rostro para ${collaborator.name}:`, error);
-              if (error instanceof Error && error.message === 'OBSCURED_FACE') {
-                throw error;
+        // 2. Buscamos coincidencias
+        for (let i = 0; i < validCollaborators.length; i += BATCH_SIZE) {
+          const batch = validCollaborators.slice(i, i + BATCH_SIZE);
+          if (batch.length === 0) continue;
+
+          const results = await Promise.all(
+            batch.map(async (collaborator) => {
+              try {
+                // Obtenemos el descriptor almacenado (usa caché en memoria para ser instantáneo después de la primera vez)
+                const storedDescriptor = await getStoredFaceDescriptor(collaborator.photo!);
+                const isMatch = compareDescriptors(liveDescriptor, storedDescriptor);
+                return { collaborator, isMatch };
+              } catch (error) {
+                console.error(`Error comparando rostro para ${collaborator.name}:`, error);
+                return { collaborator, isMatch: false };
               }
-              return { collaborator, isMatch: false };
-            }
-          })
-        );
+            })
+          );
 
-        setProgressInfo(prev => ({ ...prev, current: Math.min(prev.current + batch.length, validCollaborators.length) }));
+          setProgressInfo(prev => ({ ...prev, current: Math.min(prev.current + batch.length, validCollaborators.length) }));
 
-        const match = results.find(r => r.isMatch);
-        if (match) {
-          matchFound = match.collaborator;
-          break;
+          const match = results.find(r => r.isMatch);
+          if (match) {
+            matchFound = match.collaborator;
+            break; // Detenemos la búsqueda apenas encontramos coincidencia
+          }
         }
+      } catch (error) {
+         if (error instanceof Error && error.message === 'OBSCURED_FACE') {
+            throw error; // Propagar error para manejarlo como rostro no detectado
+         }
+         console.error('Error procesando imagen en vivo:', error);
       }
 
       if (!matchFound) {
