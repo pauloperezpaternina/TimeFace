@@ -908,7 +908,8 @@ const Dashboard: React.FC = () => {
                         <li 
                           key={c.id} 
                           className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer text-gray-900 dark:text-white text-sm border-b border-gray-100 dark:border-gray-700 last:border-0"
-                          onClick={() => {
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // Prevent input onBlur from firing immediately
                             setSelectedCollaboratorId(c.id);
                             setCollaboratorSearch(c.name);
                             setShowDropdown(false);

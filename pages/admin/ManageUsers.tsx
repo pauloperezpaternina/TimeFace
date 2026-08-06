@@ -3,6 +3,7 @@ import { dbService } from '../../services/dbService';
 import { User } from '../../types';
 import Modal from '../../components/Modal';
 import Spinner from '../../components/Spinner';
+import Pagination from '../../components/Pagination';
 
 const UserForm: React.FC<{
   userToEdit: User | null;
@@ -80,6 +81,8 @@ const ManageUsers: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [userToEdit, setUserToEdit] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true);
@@ -123,6 +126,10 @@ const ManageUsers: React.FC = () => {
     }
   };
 
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentUsers = users.slice(indexOfFirstItem, indexOfLastItem);
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -158,7 +165,7 @@ const ManageUsers: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {users.map(user => (
+                {currentUsers.map(user => (
                   <tr key={user.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{user.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{user.email}</td>
@@ -173,12 +180,20 @@ const ManageUsers: React.FC = () => {
                     </td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            )}
+          </div>
+          {!isLoading && !error && users.length > itemsPerPage && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={users.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
           )}
         </div>
-      </div>
-       <Modal 
+         <Modal 
         isOpen={!!userToDelete} 
         onClose={() => setUserToDelete(null)} 
         onConfirm={handleDelete}

@@ -7,6 +7,7 @@ import QRCode from 'react-qr-code';
 import Modal from '../components/Modal';
 import CameraCapture from '../components/CameraCapture';
 import Spinner from '../components/Spinner';
+import Pagination from '../components/Pagination';
 
 const CollaboratorForm: React.FC<{
   collaboratorToEdit: Collaborator | null;
@@ -183,6 +184,8 @@ const Collaborators: React.FC = () => {
   const [qrPin, setQrPin] = useState<string>('');
   const [qrPinTimeLeft, setQrPinTimeLeft] = useState<number>(0);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Update PIN and countdown periodically if QR modal is open
   useEffect(() => {
@@ -245,6 +248,10 @@ const Collaborators: React.FC = () => {
     }
   };
 
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentCollaborators = collaborators.slice(indexOfFirstItem, indexOfLastItem);
+
   return (
     <div className="container mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -280,7 +287,7 @@ const Collaborators: React.FC = () => {
                     </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {collaborators.map(collaborator => (
+                    {currentCollaborators.map(collaborator => (
                     <tr key={collaborator.id}>
                         <td className="px-6 py-4 whitespace-nowrap"><img onClick={() => setSelectedPhoto(collaborator.photo)} className="h-12 w-12 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity" src={collaborator.photo} alt={collaborator.name} title="Haz clic para ampliar" /></td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{collaborator.name}</td>
@@ -296,6 +303,14 @@ const Collaborators: React.FC = () => {
                 </table>
             )}
         </div>
+        {!isLoading && !error && collaborators.length > itemsPerPage && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={collaborators.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
       <Modal 
         isOpen={!!collaboratorToDelete} 

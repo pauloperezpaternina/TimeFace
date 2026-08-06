@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { dbService } from '../../services/dbService';
 import { SecurityLog } from '../../types';
+import Pagination from '../../components/Pagination';
 
 const SecurityLogs: React.FC = () => {
   const [logs, setLogs] = useState<SecurityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     loadLogs();
@@ -22,6 +25,10 @@ const SecurityLogs: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentLogs = logs.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -63,7 +70,7 @@ const SecurityLogs: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              logs.map((log) => (
+              currentLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                     {new Date(log.timestamp).toLocaleString()}
@@ -102,6 +109,15 @@ const SecurityLogs: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {!isLoading && logs.length > itemsPerPage && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={logs.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+        />
+      )}
 
       {selectedPhoto && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">

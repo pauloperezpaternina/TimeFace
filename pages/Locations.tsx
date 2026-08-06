@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { dbService } from '../services/dbService';
 import { KnownLocation } from '../types';
+import Pagination from '../components/Pagination';
 import Spinner from '../components/Spinner';
 
 const Locations: React.FC = () => {
@@ -8,6 +9,8 @@ const Locations: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<KnownLocation | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Form state
   const [name, setName] = useState('');
@@ -126,6 +129,10 @@ const Locations: React.FC = () => {
     }
   };
 
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentLocations = locations.slice(indexOfFirstItem, indexOfLastItem);
+
   return (
     <div className="container mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -160,8 +167,8 @@ const Locations: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {locations.length > 0 ? (
-                  locations.map((loc) => (
+                {currentLocations.length > 0 ? (
+                  currentLocations.map((loc) => (
                     <tr key={loc.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                         {loc.name}
@@ -201,6 +208,17 @@ const Locations: React.FC = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {!isLoading && locations.length > itemsPerPage && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={currentPage}
+            totalItems={locations.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
         </div>
       )}
 
