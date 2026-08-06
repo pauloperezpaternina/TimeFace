@@ -121,7 +121,8 @@ export const getStoredFaceDescriptor = async (imageUrl: string): Promise<Float32
 
 export const compareDescriptors = (desc1: Float32Array, desc2: Float32Array): boolean => {
   const distance = faceapi.euclideanDistance(desc1, desc2);
-  const THRESHOLD = 0.58;
+  // Reducido a 0.45 para evitar falsos positivos (mayor seguridad)
+  const THRESHOLD = 0.45;
   return distance <= THRESHOLD;
 };
 
@@ -161,9 +162,9 @@ export const compareFaces = async (liveImageBase64: string, storedImageBase64: s
     const distance = faceapi.euclideanDistance(liveDetection.descriptor, storedDetection.descriptor);
     console.log(`📏 Distancia euclidiana entre rostros: ${distance.toFixed(4)}`);
     
-    // Aumentar el umbral a 0.58 para mayor tolerancia a cambios de iluminación
-    // 0.6 es el predeterminado de la librería, 0.58 es un buen equilibrio.
-    const THRESHOLD = 0.58;
+    // Reducir el umbral a 0.45 para hacer la coincidencia más estricta 
+    // y evitar falsos positivos al registrar colaboradores
+    const THRESHOLD = 0.45;
     const isMatch = distance <= THRESHOLD;
     
     console.log(`¿Es coincidencia (isMatch)?: ${isMatch} (Umbral: ${THRESHOLD})`);

@@ -89,3 +89,14 @@ CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+-- Tabla de registro de actividad de seguridad (Logs)
+CREATE TABLE IF NOT EXISTS security_logs (
+    id TEXT PRIMARY KEY,
+    collaborator_id TEXT NOT NULL,
+    collaborator_name TEXT NOT NULL,
+    event_type TEXT NOT NULL CHECK(event_type IN ('SEQUENCE_ERROR', 'SPOOFING_ATTEMPT')),
+    description TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    photo_url TEXT
+);

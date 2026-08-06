@@ -21,15 +21,14 @@ const HRVirtualAssistant: React.FC = () => {
   useEffect(() => {
     const prepareContext = async () => {
       try {
-        const today = new Date().toISOString().split('T')[0];
-        // En una app real, aquí buscaríamos los últimos 7 días. Por ahora traemos el día actual.
-        const records = await dbService.getAttendanceRecordsByDate(today);
+        // Traemos los últimos 50 registros para tener un buen contexto de los últimos días
+        const records = await dbService.getRecentAttendanceRecords(50);
         
         // Compact the data to save tokens
         const compactData = records.map(r => ({
           n: r.collaborator_name,
           t: r.type,
-          time: new Date(r.timestamp).toLocaleTimeString(),
+          time: new Date(r.timestamp).toLocaleString('es-ES', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
           w: r.wellness_status !== 'UNCHECKED' ? r.wellness_status : undefined,
           s: r.spoof_status !== 'UNCHECKED' ? r.spoof_status : undefined
         }));

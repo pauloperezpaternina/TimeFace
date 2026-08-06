@@ -76,3 +76,13 @@ export interface KnownLocation {
   lon: number;
   radius: number;
 }
+
+export interface SecurityLog {
+  id: string;
+  collaborator_id: string;
+  collaborator_name: string;
+  event_type: 'SEQUENCE_ERROR' | 'SPOOFING_ATTEMPT';
+  description: string;
+  timestamp: string;
+  photo_url?: string;
+}

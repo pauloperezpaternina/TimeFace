@@ -182,6 +182,7 @@ const Collaborators: React.FC = () => {
   const [collaboratorForQR, setCollaboratorForQR] = useState<Collaborator | null>(null);
   const [qrPin, setQrPin] = useState<string>('');
   const [qrPinTimeLeft, setQrPinTimeLeft] = useState<number>(0);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   // Update PIN and countdown periodically if QR modal is open
   useEffect(() => {
@@ -281,7 +282,7 @@ const Collaborators: React.FC = () => {
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {collaborators.map(collaborator => (
                     <tr key={collaborator.id}>
-                        <td className="px-6 py-4 whitespace-nowrap"><img className="h-12 w-12 rounded-full object-cover" src={collaborator.photo} alt={collaborator.name} /></td>
+                        <td className="px-6 py-4 whitespace-nowrap"><img onClick={() => setSelectedPhoto(collaborator.photo)} className="h-12 w-12 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity" src={collaborator.photo} alt={collaborator.name} title="Haz clic para ampliar" /></td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{collaborator.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{collaborator.position}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
@@ -341,6 +342,25 @@ const Collaborators: React.FC = () => {
             >
               Cerrar
             </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Photo Zoom Modal */}
+      {selectedPhoto && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="relative max-w-3xl w-full flex flex-col items-center">
+            <button 
+              onClick={() => setSelectedPhoto(null)} 
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 p-2 focus:outline-none"
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <img 
+              src={selectedPhoto} 
+              alt="Colaborador ampliado" 
+              className="max-h-[85vh] max-w-full rounded-lg shadow-2xl object-contain bg-black" 
+            />
           </div>
         </div>
       )}

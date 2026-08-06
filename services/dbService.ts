@@ -1,5 +1,5 @@
 import { turso } from './tursoClient';
-import { User, Collaborator, AttendanceRecord, Role, Shift, Schedule, ShiftPattern, Visit, KnownLocation } from '../types';
+import { User, Collaborator, AttendanceRecord, Role, Shift, Schedule, ShiftPattern, Visit, KnownLocation, SecurityLog } from '../types';
 
 function rowToObj<T>(columns: readonly string[], row: unknown): T {
   const r = row as unknown[];
@@ -118,6 +118,14 @@ class DbService {
   // --- Attendance ---
   async getAttendanceRecords(): Promise<AttendanceRecord[]> {
     const rs = await turso.execute('SELECT * FROM attendance_records');
+    return rowsToArr<AttendanceRecord>(rs.columns, rs.rows);
+  }
+
+  async getRecentAttendanceRecords(limit: number = 50): Promise<AttendanceRecord[]> {
+    const rs = await turso.execute({
+      sql: 'SELECT * FROM attendance_records ORDER BY timestamp DESC LIMIT ?',
+      args: [limit],
+    });
     return rowsToArr<AttendanceRecord>(rs.columns, rs.rows);
   }
 
@@ -497,12 +505,39 @@ class DbService {
     return rs.rows[0].value as string;
   }
 
-  async setSetting(key: string, value: string): Promise<void> {
+  async getSettings(): Promise<Record<string, string>> {
+    const rs = await turso.execute('SELECT * FROM settings');
+    const settings: Record<string, string> = {};
+    rs.rows.forEach(r => {
+      settings[r[0] as string] = r[1] as string;
+    });
+    return settings;
+  }
+
+  async saveSetting(key: string, value: string): Promise<void> {
     await turso.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
     await turso.execute({
       sql: 'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?',
       args: [key, value, value]
     });
+  }
+
+  // --- Security Logs ---
+  async getSecurityLogs(): Promise<SecurityLog[]> {
+    const rs = await turso.execute('SELECT * FROM security_logs ORDER BY timestamp DESC');
+    return rowsToArr<SecurityLog>(rs.columns, rs.rows);
+  }
+
+  async addSecurityLog(log: Omit<SecurityLog, 'id'>, imageBase64?: string): Promise<SecurityLog> {
+    const id = generateId();
+    const photoUrl = imageBase64 || log.photo_url || null;
+
+    await turso.execute({
+      sql: 'INSERT INTO security_logs (id, collaborator_id, collaborator_name, event_type, description, timestamp, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      args: [id, log.collaborator_id, log.collaborator_name, log.event_type, log.description, log.timestamp, photoUrl],
+    });
+
+    return { id, ...log, photo_url: photoUrl || undefined };
   }
 }
 

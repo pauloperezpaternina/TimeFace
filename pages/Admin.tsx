@@ -7,8 +7,9 @@ import AttendanceCorrections from './admin/AttendanceCorrections';
 import ManageSettings from './admin/ManageSettings';
 import WellnessDashboard from './admin/WellnessDashboard';
 import HRVirtualAssistant from './admin/HRVirtualAssistant';
+import SecurityLogs from './admin/SecurityLogs';
 
-type AdminTab = 'users' | 'roles' | 'shifts' | 'patterns' | 'corrections' | 'settings' | 'wellness' | 'hr-assistant';
+type AdminTab = 'users' | 'roles' | 'shifts' | 'patterns' | 'corrections' | 'settings' | 'wellness' | 'hr-assistant' | 'security';
 
 const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
@@ -31,6 +32,8 @@ const Admin: React.FC = () => {
         return <WellnessDashboard />;
       case 'hr-assistant':
         return <HRVirtualAssistant />;
+      case 'security':
+        return <SecurityLogs />;
       default:
         return <ManageUsers />;
     }
@@ -61,6 +64,7 @@ const Admin: React.FC = () => {
         <TabButton tabName="patterns" label="Gestionar Patrones" />
         <TabButton tabName="corrections" label="Correcciones" />
         <TabButton tabName="wellness" label="🩺 Bienestar y Seguridad (IA)" />
+        <TabButton tabName="security" label="🛡️ Auditoría/Seguridad" />
         <TabButton tabName="hr-assistant" label="🤖 Asistente RRHH (IA)" />
         <TabButton tabName="settings" label="Configuración" />
       </div>

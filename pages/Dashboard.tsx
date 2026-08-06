@@ -385,6 +385,16 @@ const Dashboard: React.FC = () => {
           status: 'warning',
           message: `Acción inválida para ${matchFound.name}. Tu próxima acción debe ser ${expectedAction === 'entry' ? 'entrada' : 'salida'}.`
         });
+        
+        // Log the sequence error
+        dbService.addSecurityLog({
+          collaborator_id: matchFound.id,
+          collaborator_name: matchFound.name,
+          event_type: 'SEQUENCE_ERROR',
+          description: `Intentó registrar ${action === 'entry' ? 'entrada' : 'salida'} pero su próxima acción debe ser ${expectedAction === 'entry' ? 'entrada' : 'salida'}.`,
+          timestamp: new Date().toISOString()
+        }, imageBase64).catch(err => console.error('Error logging sequence error', err));
+
         setPendingCorrection({ collaborator: matchFound, expectedAction, imageBase64 });
         setIsLoading(false);
         return;
@@ -428,6 +438,16 @@ const Dashboard: React.FC = () => {
         analyzeAttendanceImage(imageBase64).then((analysis) => {
           console.log('✅ Análisis IA completado:', analysis);
           dbService.updateAttendanceRecordAIStatus(newRecord.id, analysis.spoof, analysis.wellness, analysis.reason).catch(console.error);
+          
+          if (analysis.spoof === 'SPOOF') {
+            dbService.addSecurityLog({
+              collaborator_id: matchFound.id,
+              collaborator_name: matchFound.name,
+              event_type: 'SPOOFING_ATTEMPT',
+              description: `Posible fraude detectado por IA (Anti-Spoofing). Razón: ${analysis.reason}`,
+              timestamp: new Date().toISOString()
+            }, imageBase64).catch(err => console.error('Error logging spoof attempt', err));
+          }
         }).catch(err => console.error('Error en análisis IA en segundo plano:', err));
       }
 

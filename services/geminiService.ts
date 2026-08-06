@@ -66,7 +66,9 @@ No markdown, no extra text, just the raw JSON object.`;
 export const chatWithHRAssistant = async (messages: {role: string, content: string}[], contextData: string): Promise<string> => {
   try {
     const systemPrompt = `Eres "NominAI", el asistente virtual de Recursos Humanos avanzado.
-Tienes acceso a la siguiente base de datos reciente de asistencia en formato JSON:
+La fecha y hora actual del sistema es: ${new Date().toLocaleString('es-ES')}
+
+Tienes acceso a la siguiente base de datos reciente de asistencia (últimos 50 registros) en formato JSON:
 ${contextData}
 
 Responde de forma concisa, útil y profesional a las preguntas del administrador basándote ÚNICAMENTE en estos datos. Si preguntan algo fuera de este contexto, indica que no tienes esa información.`;
