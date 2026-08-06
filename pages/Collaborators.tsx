@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { dbService } from '../services/dbService';
+import { extractFaceFromImage } from '../services/faceRecognitionService';
 import { generateTimeBasedPIN } from '../services/security';
 import { Collaborator } from '../types';
 import QRCode from 'react-qr-code';
@@ -38,19 +39,32 @@ const CollaboratorForm: React.FC<{
     }
   }, [collaboratorToEdit]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const reader = new FileReader();
-      reader.onload = (event) => {
-        setPhoto(event.target?.result as string);
+      reader.onload = async (event) => {
+        const base64 = event.target?.result as string;
+        try {
+          const croppedFace = await extractFaceFromImage(base64);
+          setPhoto(croppedFace);
+        } catch (error) {
+          alert('No se detectó un rostro claro en la imagen. Por favor, intente con otra foto.');
+          setPhoto(null);
+        }
       };
       reader.readAsDataURL(e.target.files[0]);
     }
   };
 
-  const handleCapture = (imageBase64: string) => {
-    setPhoto(imageBase64);
+  const handleCapture = async (imageBase64: string) => {
     setShowCamera(false);
+    try {
+      const croppedFace = await extractFaceFromImage(imageBase64);
+      setPhoto(croppedFace);
+    } catch (error) {
+      alert('No se detectó un rostro claro en la captura. Por favor, intente nuevamente.');
+      setPhoto(null);
+    }
   };
   
   const handleSubmit = async (e: React.FormEvent) => {

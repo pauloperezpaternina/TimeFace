@@ -104,6 +104,22 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, width = 640, h
           </div>
         )}
 
+        {/* Guía facial (óvalo) */}
+        {!error && !capturedImage && (
+          <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full opacity-60">
+              <defs>
+                <mask id="face-hole">
+                  <rect width="100" height="100" fill="white" />
+                  <ellipse cx="50" cy="50" rx="25" ry="35" fill="black" />
+                </mask>
+              </defs>
+              <rect width="100" height="100" fill="black" mask="url(#face-hole)" />
+              <ellipse cx="50" cy="50" rx="25" ry="35" fill="none" stroke="white" strokeWidth="0.5" strokeDasharray="2,2" className="animate-pulse" />
+            </svg>
+          </div>
+        )}
+
         {capturedImage ? (
           <div className="relative w-full h-full">
             <img src={capturedImage} alt="Captura temporal" className={`w-full h-auto ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`} />

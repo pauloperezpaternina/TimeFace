@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { dbService } from '../services/dbService';
-import { compareFaces } from '../services/faceRecognitionService';
+import { compareFaces, extractFaceFromImage } from '../services/faceRecognitionService';
 import { analyzeAttendanceImage } from '../services/geminiService';
 import CameraCapture from '../components/CameraCapture';
 import { speak } from '../src/utils/speech';
@@ -230,6 +230,18 @@ const Dashboard: React.FC = () => {
 
   const handleCapture = async (imageBase64: string) => {
     setIsLoading(true);
+    setResult({ status: 'info', message: 'Detectando rostro...' });
+
+    let croppedFaceBase64 = imageBase64;
+    try {
+      croppedFaceBase64 = await extractFaceFromImage(imageBase64);
+    } catch (error) {
+      setResult({ status: 'warning', message: 'No se detectó un rostro claro. Intente de nuevo sin gafas oscuras ni mascarillas.' });
+      setIsLoading(false);
+      setCameraActive(null);
+      return;
+    }
+
     setResult({ status: 'info', message: 'Identificando colaborador...' });
 
     try {
@@ -286,6 +298,8 @@ const Dashboard: React.FC = () => {
           batch.map(async (collaborator) => {
             try {
               const storedImageBase64 = await imageUrlToBase64(collaborator.photo!);
+              // Pasamos la imagen completa en vivo para que la IA tenga contexto de fondo y detecte bien el rostro.
+              // Solo si hay coincidencia, guardaremos la versión recortada.
               const isMatch = await compareFaces(imageBase64, storedImageBase64);
               return { collaborator, isMatch };
             } catch (error) {
@@ -320,7 +334,7 @@ const Dashboard: React.FC = () => {
       }
 
       setFailedAttempts(0);
-      await processAttendance(matchFound, selectedAction, imageBase64);
+      await processAttendance(matchFound, selectedAction, croppedFaceBase64);
     } catch (error) {
       console.error("Error al registrar:", error);
       const newAttempts = failedAttempts + 1;

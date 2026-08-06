@@ -30,6 +30,51 @@ const createImageFromBase64 = (base64: string): Promise<HTMLImageElement> => {
   });
 };
 
+export const extractFaceFromImage = async (imageBase64: string): Promise<string> => {
+  if (!modelsLoaded) {
+    await loadModels();
+  }
+
+  try {
+    const img = await createImageFromBase64(imageBase64);
+    
+    // Bajar la confianza mínima ayuda en malas condiciones de iluminación
+    const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 });
+    const detection = await faceapi.detectSingleFace(img, options);
+
+    if (!detection) {
+      throw new Error('NO_FACE_DETECTED');
+    }
+
+    const { box } = detection;
+    
+    // Add 10% padding around the face so it doesn't look too tight
+    const paddingX = box.width * 0.1;
+    const paddingY = box.height * 0.1;
+
+    const x = Math.max(0, box.x - paddingX);
+    const y = Math.max(0, box.y - paddingY);
+    const width = Math.min(img.width - x, box.width + paddingX * 2);
+    const height = Math.min(img.height - y, box.height + paddingY * 2);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) {
+      throw new Error('CANVAS_ERROR');
+    }
+
+    ctx.drawImage(img, x, y, width, height, 0, 0, width, height);
+    
+    return canvas.toDataURL('image/jpeg');
+  } catch (error) {
+    console.error('Error al extraer el rostro:', error);
+    throw error;
+  }
+};
+
 export const compareFaces = async (liveImageBase64: string, storedImageBase64: string): Promise<boolean> => {
   if (!modelsLoaded) {
     await loadModels();
@@ -40,8 +85,10 @@ export const compareFaces = async (liveImageBase64: string, storedImageBase64: s
     const liveImg = await createImageFromBase64(liveImageBase64);
     const storedImg = await createImageFromBase64(storedImageBase64);
 
+    const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 });
+
     // Detectar rostro en foto en vivo
-    const liveDetection = await faceapi.detectSingleFace(liveImg)
+    const liveDetection = await faceapi.detectSingleFace(liveImg, options)
       .withFaceLandmarks()
       .withFaceDescriptor();
 
@@ -51,7 +98,7 @@ export const compareFaces = async (liveImageBase64: string, storedImageBase64: s
     }
 
     // Detectar rostro en foto de referencia
-    const storedDetection = await faceapi.detectSingleFace(storedImg)
+    const storedDetection = await faceapi.detectSingleFace(storedImg, options)
       .withFaceLandmarks()
       .withFaceDescriptor();
 
@@ -64,9 +111,9 @@ export const compareFaces = async (liveImageBase64: string, storedImageBase64: s
     const distance = faceapi.euclideanDistance(liveDetection.descriptor, storedDetection.descriptor);
     console.log(`📏 Distancia euclidiana entre rostros: ${distance.toFixed(4)}`);
     
-    // Umbral estricto para evitar falsos positivos. 
-    // Por defecto es 0.6, pero 0.5 o 0.45 es mucho más estricto.
-    const THRESHOLD = 0.5;
+    // Aumentar el umbral a 0.58 para mayor tolerancia a cambios de iluminación
+    // 0.6 es el predeterminado de la librería, 0.58 es un buen equilibrio.
+    const THRESHOLD = 0.58;
     const isMatch = distance <= THRESHOLD;
     
     console.log(`¿Es coincidencia (isMatch)?: ${isMatch} (Umbral: ${THRESHOLD})`);

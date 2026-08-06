@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { dbService } from '../services/dbService';
+import { extractFaceFromImage } from '../services/faceRecognitionService';
 import { generateTimeBasedPIN } from '../services/security';
 import CameraCapture from '../components/CameraCapture';
 import Spinner from '../components/Spinner';
@@ -56,12 +57,13 @@ const UpdatePhoto: React.FC = () => {
     if (!collaborator) return;
     setIsSaving(true);
     try {
-      const updated = { ...collaborator, photo: imageBase64 };
+      const croppedFace = await extractFaceFromImage(imageBase64);
+      const updated = { ...collaborator, photo: croppedFace };
       await dbService.updateCollaborator(updated);
       setSuccess(true);
     } catch (err) {
       console.error(err);
-      setError('Error al guardar la foto.');
+      setError('Error al extraer el rostro o guardar la foto. Asegúrese de que el rostro sea visible.');
     } finally {
       setIsSaving(false);
     }

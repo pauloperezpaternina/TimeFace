@@ -1,4 +1,4 @@
-const NVIDIA_API_KEY = import.meta.env.VITE_NVIDIA_API_KEY || process.env.NVIDIA_API_KEY;
+const NVIDIA_API_KEY = import.meta.env.VITE_NVIDIA_API_KEY || '';
 const NVIDIA_MODEL = import.meta.env.VITE_NVIDIA_MODEL || 'meta/llama-3.2-90b-vision-instruct';
 // Vite proxy: /api/nvidia -> https://integrate.api.nvidia.com
 const NVIDIA_API_URL = '/api/nvidia/v1/chat/completions';
