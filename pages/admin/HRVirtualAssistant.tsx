@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { dbService } from '../../services/dbService';
 import { chatWithHRAssistant } from '../../services/geminiService';
 import Spinner from '../../components/Spinner';
+import Modal from '../../components/Modal';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -16,6 +17,7 @@ const HRVirtualAssistant: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [contextData, setContextData] = useState('');
+  const [showHelp, setShowHelp] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,12 +81,21 @@ const HRVirtualAssistant: React.FC = () => {
 
   return (
     <div className="container mx-auto max-w-4xl h-[calc(100vh-8rem)] flex flex-col">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-          NominAI - Asistente RRHH
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Pregunta sobre asistencia, reportes o anomalías en lenguaje natural.</p>
+      <div className="mb-4 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            NominAI - Asistente RRHH
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Pregunta sobre asistencia, reportes o anomalías en lenguaje natural.</p>
+        </div>
+        <button
+          onClick={() => setShowHelp(true)}
+          className="flex items-center gap-2 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 text-sm font-medium rounded-lg transition-colors border border-purple-300"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          ¿Cómo funciona la IA?
+        </button>
       </div>
 
       <div className="flex-1 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
@@ -142,6 +153,45 @@ const HRVirtualAssistant: React.FC = () => {
           </>
         )}
       </div>
+
+      <Modal
+        isOpen={showHelp}
+        onClose={() => setShowHelp(false)}
+        title="🤖 ¿Cómo funciona la Inteligencia Artificial en TimeFace?"
+      >
+        <div className="space-y-4 text-gray-700 dark:text-gray-300">
+          <p>
+            El sistema de Inteligencia Artificial (IA) trabaja en <strong>tres niveles principales</strong> para asegurar la fiabilidad, salud y agilidad del control de asistencia:
+          </p>
+          
+          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+            <h3 className="font-bold text-purple-700 dark:text-purple-400 flex items-center gap-2">
+              <span className="text-xl">1</span> Reconocimiento Facial y Anti-Spoofing
+            </h3>
+            <p className="mt-1 text-sm">
+              Al momento del marcaje, el sistema compara el rostro del colaborador con su foto de perfil usando biometría estricta. Además, en segundo plano, la IA analiza la imagen para <strong>detectar fraudes (Anti-Spoofing)</strong>, como intentos de usar una fotografía impresa o una pantalla de celular para engañar al sistema.
+            </p>
+          </div>
+
+          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+            <h3 className="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-2">
+              <span className="text-xl">2</span> Análisis de Bienestar (Wellness)
+            </h3>
+            <p className="mt-1 text-sm">
+              De forma totalmente pasiva y durante el mismo marcaje, la IA de visión analiza los microgestos faciales para determinar si el empleado muestra signos de <strong>fatiga extrema, enfermedad o alteraciones del ánimo</strong>. Esto permite a RRHH intervenir a tiempo (desde la pestaña de Bienestar) si un colaborador requiere descanso.
+            </p>
+          </div>
+
+          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+            <h3 className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+              <span className="text-xl">3</span> Asistente Virtual RRHH (NominAI)
+            </h3>
+            <p className="mt-1 text-sm">
+              Es el chat interactivo en el que te encuentras. NominAI lee la base de datos de asistencia más reciente y <strong>responde a tus preguntas en lenguaje natural</strong>. Puedes preguntarle cosas como <em>"¿Quién llegó tarde hoy?"</em> o <em>"Resume la asistencia de esta semana"</em>, y cruzará los datos instantáneamente.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

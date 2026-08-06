@@ -48,14 +48,25 @@ No markdown, no extra text, just the raw JSON object.`;
     const data = await response.json();
     const textContent = data.choices?.[0]?.message?.content || '{}';
     
-    // Clean up potential markdown blocks from LLM
-    const cleanJson = textContent.replace(/```json/g, '').replace(/```/g, '').trim();
-    const result = JSON.parse(cleanJson);
+    // Clean up potential markdown blocks or extra conversational text from LLM
+    let cleanJson = '{}';
+    const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleanJson = jsonMatch[0].trim();
+    }
+    
+    let result;
+    try {
+      result = JSON.parse(cleanJson);
+    } catch (parseError) {
+      console.error('Error parsing JSON from LLM:', textContent);
+      result = {};
+    }
     
     return {
       spoof: result.spoof || 'UNCHECKED',
       wellness: result.wellness || 'UNCHECKED',
-      reason: result.reason || 'Sin justificación.'
+      reason: result.reason || 'Análisis completado pero con formato inesperado.'
     };
   } catch (error) {
     console.error('Error in analyzeAttendanceImage:', error);
@@ -86,7 +97,7 @@ Responde de forma concisa, útil y profesional a las preguntas del administrador
         'Accept': 'application/json',
       },
       body: JSON.stringify({
-        model: NVIDIA_MODEL, // We use the same model, it handles text well too
+        model: 'meta/llama-3.1-8b-instruct', // Modelo mucho más ligero y rápido optimizado solo para texto
         messages: apiMessages,
         max_tokens: 500,
         temperature: 0.5,

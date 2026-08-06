@@ -1,19 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { dbService } from '../../services/dbService';
 import { AttendanceRecord } from '../../types';
 import Spinner from '../../components/Spinner';
+import DatePicker from '../../components/DatePicker';
+
+const getLocalDateString = (date: Date) => {
+  const offset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+  return localDate.toISOString().split('T')[0];
+};
 
 const WellnessDashboard: React.FC = () => {
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString(new Date()));
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchRecords = async () => {
       try {
-        const today = new Date().toISOString().split('T')[0];
-        // For demonstration, we just fetch all records of the day. In a real scenario, we might want a specific query.
-        const dailyRecords = await dbService.getAttendanceRecordsByDate(today);
-        setRecords(dailyRecords);
+        // Fetch up to 1000 recent records and filter locally to avoid timezone issues
+        const recentRecords = await dbService.getRecentAttendanceRecords(1000);
+        setAllRecords(recentRecords);
       } catch (error) {
         console.error('Error fetching records for wellness dashboard:', error);
       } finally {
@@ -53,6 +60,14 @@ const WellnessDashboard: React.FC = () => {
     return <span className="bg-gray-100 text-gray-800 text-xs px-2.5 py-0.5 rounded-full font-medium">Pendiente</span>;
   };
 
+  // Filter records by the selected local date
+  const records = useMemo(() => {
+    return allRecords.filter(r => {
+      const recordDate = getLocalDateString(new Date(r.timestamp));
+      return recordDate === selectedDate;
+    });
+  }, [allRecords, selectedDate]);
+
   // Filter records that have some interesting AI status
   const interestingRecords = records.filter(r => 
     r.spoof_status === 'SPOOF' || 
@@ -62,12 +77,24 @@ const WellnessDashboard: React.FC = () => {
 
   return (
     <div className="container mx-auto max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <svg className="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-          Dashboard de Bienestar y Seguridad
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Análisis IA en tiempo real (Anti-Spoofing y Estado Emocional)</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <svg className="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+            Dashboard de Bienestar y Seguridad
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Análisis IA de Anti-Spoofing y Estado Emocional</p>
+        </div>
+        
+        <div className="flex items-center gap-3 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">Filtrar por fecha:</span>
+          <div className="w-40">
+            <DatePicker 
+              selectedDate={selectedDate} 
+              onChange={(date) => setSelectedDate(date)} 
+            />
+          </div>
+        </div>
       </div>
 
       {isLoading ? (
@@ -77,7 +104,7 @@ const WellnessDashboard: React.FC = () => {
           
           {interestingRecords.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">⚠️ Alertas Prioritarias de Hoy</h2>
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">⚠️ Alertas Prioritarias Recientes</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {interestingRecords.map(record => (
                   <div key={record.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border-l-4 border-orange-500 overflow-hidden">
@@ -108,7 +135,9 @@ const WellnessDashboard: React.FC = () => {
           )}
 
           <div>
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Todos los análisis de hoy</h2>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">
+              Todos los análisis del {selectedDate}
+            </h2>
             <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -143,10 +172,10 @@ const WellnessDashboard: React.FC = () => {
                     ))}
                     {records.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
-                          No hay registros analizados hoy.
-                        </td>
-                      </tr>
+                      <td colSpan={4} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                        No hay registros analizados para el {selectedDate}.
+                      </td>
+                    </tr>
                     )}
                   </tbody>
                 </table>

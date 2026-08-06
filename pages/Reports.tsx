@@ -481,6 +481,15 @@ const Reports: React.FC = () => {
                                 )}
                               </div>
                             )}
+                            
+                            {record.spoof_status === 'SPOOF' && (
+                              <span 
+                                className="px-2 py-1 bg-red-100 text-red-800 text-[10px] font-bold rounded-full border border-red-300 ml-2 animate-pulse cursor-help"
+                                title={`FRAUDE DETECTADO: ${record.ai_analysis_reason || 'Foto de foto/pantalla'}`}
+                              >
+                                ⚠️ FRAUDE
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
